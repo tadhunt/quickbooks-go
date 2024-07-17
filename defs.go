@@ -3,7 +3,11 @@
 
 package quickbooks
 
-import "time"
+import (
+	"time"
+
+	"github.com/markusmobius/go-dateparser"
+)
 
 type CustomField struct {
 	DefinitionId string `json:"DefinitionId,omitempty"`
@@ -18,25 +22,35 @@ type Date struct {
 	raw  []byte
 }
 
-// UnmarshalJSON removes time from parsed date
-func (d *Date) UnmarshalJSON(b []byte) (err error) {
+func (d *Date) UnmarshalJSON(b []byte) error {
 	d.raw = make([]byte, len(b))
 	copy(d.raw, b)
 
-	if b[0] == '"' && b[len(b)-1] == '"' {
+	if len(b) == 0 {
+		d.Time = time.Time{}
+		return nil
+	}
+
+	if len(b) > 1 &&  b[0] == '"' && b[len(b)-1] == '"' {
 		b = b[1 : len(b)-1]
 	}
 
-	d.Time, err = time.Parse(format, string(b))
-	if err != nil {
-		d.Time, err = time.Parse(secondFormat, string(b))
+	dpcfg := &dateparser.Configuration{
+		DefaultTimezone: time.Local,
 	}
 
-	return err
+	date, err := dateparser.Parse(dpcfg, string(b))
+	if err != nil {
+		return err
+	}
+
+	d.Time = date.Time
+
+	return nil
 }
 
 func (d Date) String() string {
-	return d.Format(format)
+	return d.Format(DateFormat)
 }
 
 func (d Date) GetRaw() []byte {
@@ -61,9 +75,9 @@ const (
 	// SandboxEndpoint is for testing.
 	SandboxEndpoint EndpointUrl = "https://sandbox-quickbooks.api.intuit.com"
 
-	format        = "2006-01-02T15:04:05-07:00"
+	DateFormat        = "2006-01-02T15:04:05-07:00"
 	queryPageSize = 1000
-	secondFormat  = "2006-01-02"
+//	secondFormat  = "2006-01-02"
 )
 
 func (u EndpointUrl) String() string {
