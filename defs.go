@@ -15,10 +15,14 @@ type CustomField struct {
 // Date represents a Quickbooks date
 type Date struct {
 	time.Time `json:",omitempty"`
+	raw  []byte
 }
 
 // UnmarshalJSON removes time from parsed date
 func (d *Date) UnmarshalJSON(b []byte) (err error) {
+	d.raw = make([]byte, len(b))
+	copy(d.raw, b)
+
 	if b[0] == '"' && b[len(b)-1] == '"' {
 		b = b[1 : len(b)-1]
 	}
@@ -33,6 +37,10 @@ func (d *Date) UnmarshalJSON(b []byte) (err error) {
 
 func (d Date) String() string {
 	return d.Format(format)
+}
+
+func (d Date) GetRaw() []byte {
+	return d.raw
 }
 
 // EmailAddress represents a QuickBooks email address.

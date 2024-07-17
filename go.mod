@@ -1,8 +1,9 @@
-module github.com/rwestlund/quickbooks-go
+module github.com/tadhunt/quickbooks-go
 
 go 1.20
 
 require (
+	github.com/rwestlund/quickbooks-go v1.0.0
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/oauth2 v0.19.0
 	gopkg.in/guregu/null.v4 v4.0.0
