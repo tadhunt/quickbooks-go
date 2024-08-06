@@ -10,7 +10,12 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"io"
+	"os"
+	"log"
 )
+
+var Debug = ""
 
 // Client is your handle to the QuickBooks API.
 type Client struct {
@@ -157,13 +162,50 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 		return parseFailure(resp)
 	}
 
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if Debug != "" {
+		dump(Debug, data)
+	}
+
 	if responseObject != nil {
-		if err = json.NewDecoder(resp.Body).Decode(&responseObject); err != nil {
+		err = json.Unmarshal(data, &responseObject)
+		if err != nil {
 			return fmt.Errorf("failed to unmarshal response into object: %v", err)
 		}
+//		if err = json.NewDecoder(resp.Body).Decode(&responseObject); err != nil {
+//			return fmt.Errorf("failed to unmarshal response into object: %v", err)
+//		}
 	}
 
 	return nil
+}
+
+func dump(path string, data []byte) {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("open %s: %v", path, err)
+		return
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			log.Printf("close %s: %v", path, err)
+		}
+	}()
+
+	n, err := f.Write(data)
+	if err != nil {
+		log.Printf("write %s: %v", path, err)
+		return
+	}
+	if n != len(data) {
+		log.Printf("write %s: short write %d expected %d", path, n, len(data))
+		return
+	}
 }
 
 func (c *Client) get(endpoint string, responseObject interface{}, queryParameters map[string]string) error {
