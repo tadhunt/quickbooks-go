@@ -168,7 +168,7 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 	}
 
 	if Debug != "" {
-		dump(Debug, data)
+		dump(Debug, req, data)
 	}
 
 	if responseObject != nil {
@@ -184,7 +184,7 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 	return nil
 }
 
-func dump(path string, data []byte) {
+func dump(path string, req *http.Request, data []byte) {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Printf("open %s: %v", path, err)
@@ -196,6 +196,12 @@ func dump(path string, data []byte) {
 			log.Printf("close %s: %v", path, err)
 		}
 	}()
+
+	_, err = fmt.Fprintf(f, "\n%s %s\n", req.Method, req.URL.String())
+	if err != nil {
+		log.Printf("%s: print header: %v", path, err)
+		return
+	}
 
 	n, err := f.Write(data)
 	if err != nil {
