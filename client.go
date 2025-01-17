@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"time"
 	"io"
@@ -143,10 +144,14 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 
+	c.dumpRequest(req)
+
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to make request: %v", err)
 	}
+
+	c.dumpResponse(resp)
 
 	defer resp.Body.Close()
 
@@ -168,10 +173,6 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 		return err
 	}
 
-	if c.debug != "" {
-		dump(c.debug, req, data)
-	}
-
 	if responseObject != nil {
 		err = json.Unmarshal(data, &responseObject)
 		if err != nil {
@@ -185,32 +186,66 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 	return nil
 }
 
-func dump(path string, req *http.Request, data []byte) {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func (c *Client) dumpRequest(req *http.Request) {
+	if c.debug == "" {
+		return
+	}
+
+	f, err := os.OpenFile(c.debug, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Printf("open %s: %v", path, err)
+		log.Printf("open %s: %v", c.debug, err)
 		return
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			log.Printf("close %s: %v", path, err)
+			log.Printf("close %s: %v", c.debug, err)
 		}
 	}()
 
-	_, err = fmt.Fprintf(f, "\n%s %s\n", req.Method, req.URL.String())
+	data, err := httputil.DumpRequest(req, true)
 	if err != nil {
-		log.Printf("%s: print header: %v", path, err)
+		log.Printf("dumprequest: %v", err)
 		return
 	}
 
-	n, err := f.Write(data)
+	data = append(data, '\n')
+
+	_, err = f.Write(data)
 	if err != nil {
-		log.Printf("write %s: %v", path, err)
+		log.Printf("write %s: %v", c.debug, err)
 		return
 	}
-	if n != len(data) {
-		log.Printf("write %s: short write %d expected %d", path, n, len(data))
+}
+
+func (c *Client) dumpResponse(resp *http.Response) {
+	if c.debug == "" {
+		return
+	}
+
+	f, err := os.OpenFile(c.debug, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("open %s: %v", c.debug, err)
+		return
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			log.Printf("close %s: %v", c.debug, err)
+		}
+	}()
+
+	data, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		log.Printf("dumpresponse: %v", err)
+		return
+	}
+
+	data = append(data, '\n')
+
+	_, err = f.Write(data)
+	if err != nil {
+		log.Printf("write %s: %v", c.debug, err)
 		return
 	}
 }

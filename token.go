@@ -81,10 +81,14 @@ func (c *Client) RetrieveBearerToken(authorizationCode, redirectURI string) (*Be
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
 	req.Header.Set("Authorization", "Basic "+basicAuth(c))
 
+	c.dumpRequest(req)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+
+	c.dumpResponse(resp)
 
 	defer resp.Body.Close()
 
