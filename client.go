@@ -15,8 +15,6 @@ import (
 	"log"
 )
 
-var Debug = ""
-
 // Client is your handle to the QuickBooks API.
 type Client struct {
 	// Get this from oauth2.NewClient().
@@ -35,10 +33,12 @@ type Client struct {
 	realmId string
 	// Flag set if the limit of 500req/s has been hit (source: https://developer.intuit.com/app/developer/qbo/docs/learn/rest-api-features#limits-and-throttles)
 	throttled bool
+
+	debug string
 }
 
 // NewClient initializes a new QuickBooks client for interacting with their Online API
-func NewClient(clientId string, clientSecret string, realmId string, isProduction bool, minorVersion string, token *BearerToken) (c *Client, err error) {
+func NewClient(clientId string, clientSecret string, realmId string, isProduction bool, minorVersion string, token *BearerToken, debug string) (c *Client, err error) {
 	if minorVersion == "" {
 		minorVersion = "65"
 	}
@@ -49,6 +49,7 @@ func NewClient(clientId string, clientSecret string, realmId string, isProductio
 		minorVersion: minorVersion,
 		realmId:      realmId,
 		throttled:    false,
+		debug:        debug,
 	}
 
 	if isProduction {
@@ -167,8 +168,8 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 		return err
 	}
 
-	if Debug != "" {
-		dump(Debug, req, data)
+	if c.debug != "" {
+		dump(c.debug, req, data)
 	}
 
 	if responseObject != nil {
