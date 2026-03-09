@@ -2,7 +2,7 @@ package quickbooks
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -15,7 +15,7 @@ func TestAttachable(t *testing.T) {
 	require.NoError(t, err)
 	defer jsonFile.Close()
 
-	byteValue, err := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	require.NoError(t, err)
 
 	var r struct {

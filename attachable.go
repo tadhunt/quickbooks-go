@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -114,7 +113,7 @@ func (c *Client) DownloadAttachable(id string) (string, error) {
 		return "", parseFailure(resp)
 	}
 
-	downloadUrl, err := ioutil.ReadAll(resp.Body)
+	downloadUrl, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

@@ -7,13 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"time"
-	"io"
 	"os"
-	"log"
+	"time"
 )
 
 // Client is your handle to the QuickBooks API.
@@ -178,9 +178,9 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal response into object: %v", err)
 		}
-//		if err = json.NewDecoder(resp.Body).Decode(&responseObject); err != nil {
-//			return fmt.Errorf("failed to unmarshal response into object: %v", err)
-//		}
+		//		if err = json.NewDecoder(resp.Body).Decode(&responseObject); err != nil {
+		//			return fmt.Errorf("failed to unmarshal response into object: %v", err)
+		//		}
 	}
 
 	return nil

@@ -2,7 +2,7 @@ package quickbooks
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"testing"
@@ -17,7 +17,7 @@ func TestBill(t *testing.T) {
 	}
 	defer jsonFile.Close()
 
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	if err != nil {
 		log.Fatal("When reading JSON file: ", err)
 	}

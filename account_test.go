@@ -2,7 +2,7 @@ package quickbooks
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -15,7 +15,7 @@ func TestAccount(t *testing.T) {
 	require.NoError(t, err)
 	defer jsonFile.Close()
 
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 	require.NoError(t, err)
 
 	var r struct {

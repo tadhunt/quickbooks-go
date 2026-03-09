@@ -19,7 +19,7 @@ type CustomField struct {
 // Date represents a Quickbooks date
 type Date struct {
 	time.Time `json:",omitempty"`
-	raw  []byte
+	raw       []byte
 }
 
 func (d *Date) UnmarshalJSON(b []byte) error {
@@ -31,7 +31,7 @@ func (d *Date) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
-	if len(b) > 1 &&  b[0] == '"' && b[len(b)-1] == '"' {
+	if len(b) > 1 && b[0] == '"' && b[len(b)-1] == '"' {
 		b = b[1 : len(b)-1]
 	}
 
@@ -75,9 +75,10 @@ const (
 	// SandboxEndpoint is for testing.
 	SandboxEndpoint EndpointUrl = "https://sandbox-quickbooks.api.intuit.com"
 
-	DateFormat        = "2006-01-02T15:04:05-07:00"
+	DateFormat    = "2006-01-02T15:04:05-07:00"
 	queryPageSize = 1000
-//	secondFormat  = "2006-01-02"
+
+// secondFormat  = "2006-01-02"
 )
 
 func (u EndpointUrl) String() string {
