@@ -12,6 +12,7 @@ type TimeActivity struct {
 	TxnDate        string         `json:"TxnDate,omitempty"`
 	NameOf         string         `json:"NameOf,omitempty"` // "Employee" or "Vendor"
 	EmployeeRef    *ReferenceType `json:"EmployeeRef,omitempty"`
+	ItemRef        *ReferenceType `json:"ItemRef,omitempty"` // Service item (e.g. "Sales Commission"); nil for regular hours
 	Hours          int            `json:"Hours,omitempty"`
 	Minutes        int            `json:"Minutes,omitempty"`
 	Description    string         `json:"Description,omitempty"`
