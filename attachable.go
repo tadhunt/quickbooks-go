@@ -11,6 +11,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 type ContentType string
@@ -123,6 +124,8 @@ func (c *Client) DownloadAttachable(id string) (string, error) {
 
 // DownloadAttachableContent downloads the attachable file content, streaming it to the provided writer.
 // Returns the content type and number of bytes written.
+// Uses a plain HTTP client for the actual file download since the temporary download URL
+// has its own auth and does not accept OAuth headers.
 func (c *Client) DownloadAttachableContent(id string, w io.Writer) (string, int64, error) {
 	downloadUrl, err := c.DownloadAttachable(id)
 	if err != nil {
@@ -133,7 +136,10 @@ func (c *Client) DownloadAttachableContent(id string, w io.Writer) (string, int6
 		return "", 0, errors.New("no download URL returned")
 	}
 
-	resp, err := c.Client.Get(downloadUrl)
+	// Use a plain HTTP client — the temp download URL has embedded auth
+	// and will reject OAuth headers with 403
+	plainClient := &http.Client{Timeout: 60 * time.Second}
+	resp, err := plainClient.Get(downloadUrl)
 	if err != nil {
 		return "", 0, fmt.Errorf("fetch file: %w", err)
 	}
@@ -205,17 +211,21 @@ func (c *Client) FindAttachableById(id string) (*Attachable, error) {
 	return &resp.Attachable, nil
 }
 
-// QueryAttachables accepts an SQL query and returns all attachables found using it
+// QueryAttachables accepts an SQL query and returns all attachables found using it.
+// The query should not include STARTPOSITION or MAXRESULTS — pagination is handled automatically.
 func (c *Client) QueryAttachables(query string) ([]Attachable, error) {
 	var resp struct {
 		QueryResponse struct {
 			Attachables   []Attachable `json:"Attachable"`
 			StartPosition int
 			MaxResults    int
+			TotalCount    int
 		}
 	}
 
-	if err := c.query(query, &resp); err != nil {
+	// First page
+	pagedQuery := query + " STARTPOSITION 1 MAXRESULTS " + strconv.Itoa(queryPageSize)
+	if err := c.query(pagedQuery, &resp); err != nil {
 		return nil, err
 	}
 
@@ -223,7 +233,25 @@ func (c *Client) QueryAttachables(query string) ([]Attachable, error) {
 		return nil, errors.New("could not find any attachables")
 	}
 
-	return resp.QueryResponse.Attachables, nil
+	attachables := make([]Attachable, 0, len(resp.QueryResponse.Attachables))
+	attachables = append(attachables, resp.QueryResponse.Attachables...)
+
+	// Fetch remaining pages if there are more
+	for len(attachables) < resp.QueryResponse.TotalCount {
+		pagedQuery = query + " STARTPOSITION " + strconv.Itoa(len(attachables)+1) + " MAXRESULTS " + strconv.Itoa(queryPageSize)
+
+		if err := c.query(pagedQuery, &resp); err != nil {
+			return nil, err
+		}
+
+		if resp.QueryResponse.Attachables == nil {
+			break
+		}
+
+		attachables = append(attachables, resp.QueryResponse.Attachables...)
+	}
+
+	return attachables, nil
 }
 
 // UpdateAttachable updates the attachable
