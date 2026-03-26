@@ -121,6 +121,38 @@ func (c *Client) DownloadAttachable(id string) (string, error) {
 	return string(downloadUrl), err
 }
 
+// DownloadAttachableContent downloads the attachable file content, streaming it to the provided writer.
+// Returns the content type and number of bytes written.
+func (c *Client) DownloadAttachableContent(id string, w io.Writer) (string, int64, error) {
+	downloadUrl, err := c.DownloadAttachable(id)
+	if err != nil {
+		return "", 0, fmt.Errorf("get download URL: %w", err)
+	}
+
+	if downloadUrl == "" {
+		return "", 0, errors.New("no download URL returned")
+	}
+
+	resp, err := c.Client.Get(downloadUrl)
+	if err != nil {
+		return "", 0, fmt.Errorf("fetch file: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", 0, fmt.Errorf("fetch file returned status %d", resp.StatusCode)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+
+	n, err := io.Copy(w, resp.Body)
+	if err != nil {
+		return contentType, n, fmt.Errorf("stream file: %w", err)
+	}
+
+	return contentType, n, nil
+}
+
 // FindAttachables gets the full list of Attachables in the QuickBooks attachable.
 func (c *Client) FindAttachables() ([]Attachable, error) {
 	var resp struct {
