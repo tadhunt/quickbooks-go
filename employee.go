@@ -1,7 +1,7 @@
 package quickbooks
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 )
 
@@ -52,7 +52,7 @@ func (c *Client) FindEmployees() ([]Employee, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no employees could be found")
+		return nil, fmt.Errorf("%w: no employees could be found", ErrNotFound)
 	}
 
 	employees := make([]Employee, 0, resp.QueryResponse.TotalCount)
@@ -65,7 +65,7 @@ func (c *Client) FindEmployees() ([]Employee, error) {
 		}
 
 		if resp.QueryResponse.Employees == nil {
-			return nil, errors.New("no employees could be found")
+			return nil, fmt.Errorf("%w: no employees could be found", ErrNotFound)
 		}
 
 		employees = append(employees, resp.QueryResponse.Employees...)
@@ -103,7 +103,7 @@ func (c *Client) QueryEmployees(query string) ([]Employee, error) {
 	}
 
 	if resp.QueryResponse.Employees == nil {
-		return nil, errors.New("could not find any employees")
+		return nil, fmt.Errorf("%w: could not find any employees", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Employees, nil
@@ -112,7 +112,7 @@ func (c *Client) QueryEmployees(query string) ([]Employee, error) {
 // UpdateEmployee updates the employee
 func (c *Client) UpdateEmployee(employee *Employee) (*Employee, error) {
 	if employee.Id == "" {
-		return nil, errors.New("missing employee id")
+		return nil, fmt.Errorf("%w: missing employee id", ErrMissingID)
 	}
 
 	existingEmployee, err := c.FindEmployeeById(employee.Id)

@@ -1,6 +1,7 @@
 package quickbooks
 
 import (
+	"fmt"
 	"errors"
 	"strconv"
 )
@@ -67,7 +68,7 @@ func (c *Client) FindEstimates() ([]Estimate, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no estimates could be found")
+		return nil, fmt.Errorf("%w: no estimates could be found", ErrNotFound)
 	}
 
 	estimates := make([]Estimate, 0, resp.QueryResponse.TotalCount)
@@ -80,7 +81,7 @@ func (c *Client) FindEstimates() ([]Estimate, error) {
 		}
 
 		if resp.QueryResponse.Estimates == nil {
-			return nil, errors.New("no estimates could be found")
+			return nil, fmt.Errorf("%w: no estimates could be found", ErrNotFound)
 		}
 
 		estimates = append(estimates, resp.QueryResponse.Estimates...)
@@ -118,7 +119,7 @@ func (c *Client) QueryEstimates(query string) ([]Estimate, error) {
 	}
 
 	if resp.QueryResponse.Estimates == nil {
-		return nil, errors.New("could not find any estimates")
+		return nil, fmt.Errorf("%w: could not find any estimates", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Estimates, nil
@@ -138,7 +139,7 @@ func (c *Client) SendEstimate(estimateId string, emailAddress string) error {
 // UpdateEstimate updates the estimate
 func (c *Client) UpdateEstimate(estimate *Estimate) (*Estimate, error) {
 	if estimate.Id == "" {
-		return nil, errors.New("missing estimate id")
+		return nil, fmt.Errorf("%w: missing estimate id", ErrMissingID)
 	}
 
 	existingEstimate, err := c.FindEstimateById(estimate.Id)
@@ -170,7 +171,7 @@ func (c *Client) UpdateEstimate(estimate *Estimate) (*Estimate, error) {
 
 func (c *Client) VoidEstimate(estimate Estimate) error {
 	if estimate.Id == "" {
-		return errors.New("missing estimate id")
+		return fmt.Errorf("%w: missing estimate id", ErrMissingID)
 	}
 
 	existingEstimate, err := c.FindEstimateById(estimate.Id)

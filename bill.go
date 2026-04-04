@@ -1,8 +1,8 @@
 package quickbooks
 
 import (
+	"fmt"
 	"encoding/json"
-	"errors"
 	"strconv"
 )
 
@@ -50,7 +50,7 @@ func (c *Client) CreateBill(bill *Bill) (*Bill, error) {
 // DeleteBill deletes the bill
 func (c *Client) DeleteBill(bill *Bill) error {
 	if bill.Id == "" || bill.SyncToken == "" {
-		return errors.New("missing id/sync token")
+		return fmt.Errorf("%w: missing id/sync token", ErrMissingID)
 	}
 
 	return c.post("bill", bill, nil, map[string]string{"operation": "delete"})
@@ -72,7 +72,7 @@ func (c *Client) FindBills() ([]Bill, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no bills could be found")
+		return nil, fmt.Errorf("%w: no bills could be found", ErrNotFound)
 	}
 
 	bills := make([]Bill, 0, resp.QueryResponse.TotalCount)
@@ -85,7 +85,7 @@ func (c *Client) FindBills() ([]Bill, error) {
 		}
 
 		if resp.QueryResponse.Bills == nil {
-			return nil, errors.New("no bills could be found")
+			return nil, fmt.Errorf("%w: no bills could be found", ErrNotFound)
 		}
 
 		bills = append(bills, resp.QueryResponse.Bills...)
@@ -123,7 +123,7 @@ func (c *Client) QueryBills(query string) ([]Bill, error) {
 	}
 
 	if resp.QueryResponse.Bills == nil {
-		return nil, errors.New("could not find any bills")
+		return nil, fmt.Errorf("%w: could not find any bills", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Bills, nil
@@ -132,7 +132,7 @@ func (c *Client) QueryBills(query string) ([]Bill, error) {
 // UpdateBill updates the bill
 func (c *Client) UpdateBill(bill *Bill) (*Bill, error) {
 	if bill.Id == "" {
-		return nil, errors.New("missing bill id")
+		return nil, fmt.Errorf("%w: missing bill id", ErrMissingID)
 	}
 
 	existingBill, err := c.FindBillById(bill.Id)

@@ -1,6 +1,7 @@
 package quickbooks
 
 import (
+	"fmt"
 	"errors"
 	"strconv"
 )
@@ -63,7 +64,7 @@ func (c *Client) FindPayments() ([]Payment, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no payments could be found")
+		return nil, fmt.Errorf("%w: no payments could be found", ErrNotFound)
 	}
 
 	payments := make([]Payment, 0, resp.QueryResponse.TotalCount)
@@ -76,7 +77,7 @@ func (c *Client) FindPayments() ([]Payment, error) {
 		}
 
 		if resp.QueryResponse.Payments == nil {
-			return nil, errors.New("no payments could be found")
+			return nil, fmt.Errorf("%w: no payments could be found", ErrNotFound)
 		}
 
 		payments = append(payments, resp.QueryResponse.Payments...)
@@ -114,7 +115,7 @@ func (c *Client) QueryPayments(query string) ([]Payment, error) {
 	}
 
 	if resp.QueryResponse.Payments == nil {
-		return nil, errors.New("could not find any payments")
+		return nil, fmt.Errorf("%w: could not find any payments", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Payments, nil
@@ -123,7 +124,7 @@ func (c *Client) QueryPayments(query string) ([]Payment, error) {
 // UpdatePayment updates the given payment in QuickBooks.
 func (c *Client) UpdatePayment(payment *Payment) (*Payment, error) {
 	if payment.Id == "" {
-		return nil, errors.New("missing payment id")
+		return nil, fmt.Errorf("%w: missing payment id", ErrMissingID)
 	}
 
 	existingPayment, err := c.FindPaymentById(payment.Id)
@@ -156,7 +157,7 @@ func (c *Client) UpdatePayment(payment *Payment) (*Payment, error) {
 // VoidPayment voids the given payment in QuickBooks.
 func (c *Client) VoidPayment(payment Payment) error {
 	if payment.Id == "" {
-		return errors.New("missing payment id")
+		return fmt.Errorf("%w: missing payment id", ErrMissingID)
 	}
 
 	existingPayment, err := c.FindPaymentById(payment.Id)

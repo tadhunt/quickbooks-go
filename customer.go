@@ -5,7 +5,6 @@ package quickbooks
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -111,7 +110,7 @@ func (c *Client) FindCustomers() ([]Customer, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no customers could be found")
+		return nil, fmt.Errorf("%w: no customers could be found", ErrNotFound)
 	}
 
 	customers := make([]Customer, 0, resp.QueryResponse.TotalCount)
@@ -124,7 +123,7 @@ func (c *Client) FindCustomers() ([]Customer, error) {
 		}
 
 		if resp.QueryResponse.Customers == nil {
-			return nil, errors.New("no customers could be found")
+			return nil, fmt.Errorf("%w: no customers could be found", ErrNotFound)
 		}
 
 		customers = append(customers, resp.QueryResponse.Customers...)
@@ -163,7 +162,7 @@ func (c *Client) FindCustomerByName(name string) (*Customer, error) {
 	}
 
 	if len(resp.QueryResponse.Customer) == 0 {
-		return nil, errors.New("no customers could be found")
+		return nil, fmt.Errorf("%w: no customers could be found", ErrNotFound)
 	}
 
 	return &resp.QueryResponse.Customer[0], nil
@@ -184,7 +183,7 @@ func (c *Client) QueryCustomers(query string) ([]Customer, error) {
 	}
 
 	if resp.QueryResponse.Customers == nil {
-		return nil, errors.New("could not find any customers")
+		return nil, fmt.Errorf("%w: could not find any customers", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Customers, nil
@@ -195,12 +194,12 @@ func (c *Client) QueryCustomers(query string) ([]Customer, error) {
 // fields are present in our Customer object.
 func (c *Client) UpdateCustomer(customer *Customer) (*Customer, error) {
 	if customer.Id == "" {
-		return nil, errors.New("missing customer id")
+		return nil, fmt.Errorf("%w: missing customer id", ErrMissingID)
 	}
 
 	existingCustomer, err := c.FindCustomerById(customer.Id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find existing customer: %v", err)
+		return nil, fmt.Errorf("failed to find existing customer: %w", err)
 	}
 
 	customer.SyncToken = existingCustomer.SyncToken

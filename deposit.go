@@ -1,6 +1,7 @@
 package quickbooks
 
 import (
+	"fmt"
 	"errors"
 	"strconv"
 )
@@ -54,7 +55,7 @@ func (c *Client) FindDeposits() ([]Deposit, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no deposits could be found")
+		return nil, fmt.Errorf("%w: no deposits could be found", ErrNotFound)
 	}
 
 	deposits := make([]Deposit, 0, resp.QueryResponse.TotalCount)
@@ -67,7 +68,7 @@ func (c *Client) FindDeposits() ([]Deposit, error) {
 		}
 
 		if resp.QueryResponse.Deposits == nil {
-			return nil, errors.New("no deposits could be found")
+			return nil, fmt.Errorf("%w: no deposits could be found", ErrNotFound)
 		}
 
 		deposits = append(deposits, resp.QueryResponse.Deposits...)
@@ -105,7 +106,7 @@ func (c *Client) QueryDeposits(query string) ([]Deposit, error) {
 	}
 
 	if resp.QueryResponse.Deposits == nil {
-		return nil, errors.New("could not find any deposits")
+		return nil, fmt.Errorf("%w: could not find any deposits", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Deposits, nil
@@ -114,7 +115,7 @@ func (c *Client) QueryDeposits(query string) ([]Deposit, error) {
 // UpdateDeposit updates the deposit
 func (c *Client) UpdateDeposit(deposit *Deposit) (*Deposit, error) {
 	if deposit.Id == "" {
-		return nil, errors.New("missing deposit id")
+		return nil, fmt.Errorf("%w: missing deposit id", ErrMissingID)
 	}
 
 	existingDeposit, err := c.FindDepositById(deposit.Id)

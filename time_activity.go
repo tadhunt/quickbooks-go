@@ -1,7 +1,7 @@
 package quickbooks
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 )
 
@@ -49,7 +49,7 @@ func (c *Client) FindTimeActivities() ([]TimeActivity, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no time activities could be found")
+		return nil, fmt.Errorf("%w: no time activities could be found", ErrNotFound)
 	}
 
 	timeActivities := make([]TimeActivity, 0, resp.QueryResponse.TotalCount)
@@ -62,7 +62,7 @@ func (c *Client) FindTimeActivities() ([]TimeActivity, error) {
 		}
 
 		if resp.QueryResponse.TimeActivity == nil {
-			return nil, errors.New("no time activities could be found")
+			return nil, fmt.Errorf("%w: no time activities could be found", ErrNotFound)
 		}
 
 		timeActivities = append(timeActivities, resp.QueryResponse.TimeActivity...)
@@ -100,7 +100,7 @@ func (c *Client) QueryTimeActivities(query string) ([]TimeActivity, error) {
 	}
 
 	if resp.QueryResponse.TimeActivity == nil {
-		return nil, errors.New("could not find any time activities")
+		return nil, fmt.Errorf("%w: could not find any time activities", ErrNotFound)
 	}
 
 	return resp.QueryResponse.TimeActivity, nil

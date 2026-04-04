@@ -4,8 +4,8 @@
 package quickbooks
 
 import (
+	"fmt"
 	"encoding/json"
-	"errors"
 	"strconv"
 )
 
@@ -68,7 +68,7 @@ func (c *Client) FindItems() ([]Item, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no items could be found")
+		return nil, fmt.Errorf("%w: no items could be found", ErrNotFound)
 	}
 
 	items := make([]Item, 0, resp.QueryResponse.TotalCount)
@@ -81,7 +81,7 @@ func (c *Client) FindItems() ([]Item, error) {
 		}
 
 		if resp.QueryResponse.Items == nil {
-			return nil, errors.New("no items could be found")
+			return nil, fmt.Errorf("%w: no items could be found", ErrNotFound)
 		}
 
 		items = append(items, resp.QueryResponse.Items...)
@@ -119,7 +119,7 @@ func (c *Client) QueryItems(query string) ([]Item, error) {
 	}
 
 	if resp.QueryResponse.Items == nil {
-		return nil, errors.New("could not find any items")
+		return nil, fmt.Errorf("%w: could not find any items", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Items, nil
@@ -128,7 +128,7 @@ func (c *Client) QueryItems(query string) ([]Item, error) {
 // UpdateItem updates the item
 func (c *Client) UpdateItem(item *Item) (*Item, error) {
 	if item.Id == "" {
-		return nil, errors.New("missing item id")
+		return nil, fmt.Errorf("%w: missing item id", ErrMissingID)
 	}
 
 	existingItem, err := c.FindItemById(item.Id)

@@ -4,6 +4,7 @@
 package quickbooks
 
 import (
+	"fmt"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -171,7 +172,7 @@ func (c *Client) FindInvoices() ([]Invoice, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no invoices could be found")
+		return nil, fmt.Errorf("%w: no invoices could be found", ErrNotFound)
 	}
 
 	invoices := make([]Invoice, 0, resp.QueryResponse.TotalCount)
@@ -184,7 +185,7 @@ func (c *Client) FindInvoices() ([]Invoice, error) {
 		}
 
 		if resp.QueryResponse.Invoices == nil {
-			return nil, errors.New("no invoices could be found")
+			return nil, fmt.Errorf("%w: no invoices could be found", ErrNotFound)
 		}
 
 		invoices = append(invoices, resp.QueryResponse.Invoices...)
@@ -222,7 +223,7 @@ func (c *Client) QueryInvoices(query string) ([]Invoice, error) {
 	}
 
 	if resp.QueryResponse.Invoices == nil {
-		return nil, errors.New("could not find any invoices")
+		return nil, fmt.Errorf("%w: could not find any invoices", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Invoices, nil
@@ -242,7 +243,7 @@ func (c *Client) SendInvoice(invoiceId string, emailAddress string) error {
 // UpdateInvoice updates the invoice
 func (c *Client) UpdateInvoice(invoice *Invoice) (*Invoice, error) {
 	if invoice.Id == "" {
-		return nil, errors.New("missing invoice id")
+		return nil, fmt.Errorf("%w: missing invoice id", ErrMissingID)
 	}
 
 	existingInvoice, err := c.FindInvoiceById(invoice.Id)
@@ -274,7 +275,7 @@ func (c *Client) UpdateInvoice(invoice *Invoice) (*Invoice, error) {
 
 func (c *Client) VoidInvoice(invoice Invoice) error {
 	if invoice.Id == "" {
-		return errors.New("missing invoice id")
+		return fmt.Errorf("%w: missing invoice id", ErrMissingID)
 	}
 
 	existingInvoice, err := c.FindInvoiceById(invoice.Id)

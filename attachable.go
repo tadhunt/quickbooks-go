@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -83,7 +82,7 @@ func (c *Client) CreateAttachable(attachable *Attachable) (*Attachable, error) {
 // DeleteAttachable deletes the attachable
 func (c *Client) DeleteAttachable(attachable *Attachable) error {
 	if attachable.Id == "" || attachable.SyncToken == "" {
-		return errors.New("missing id/sync token")
+		return fmt.Errorf("%w: missing id/sync token", ErrMissingID)
 	}
 
 	return c.post("attachable", attachable, nil, map[string]string{"operation": "delete"})
@@ -133,7 +132,7 @@ func (c *Client) DownloadAttachableContent(id string, w io.Writer) (string, int6
 	}
 
 	if downloadUrl == "" {
-		return "", 0, errors.New("no download URL returned")
+		return "", 0, ErrNoDownloadURL
 	}
 
 	// Use a plain HTTP client — the temp download URL has embedded auth
@@ -146,7 +145,7 @@ func (c *Client) DownloadAttachableContent(id string, w io.Writer) (string, int6
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", 0, fmt.Errorf("fetch file returned status %d", resp.StatusCode)
+		return "", 0, &HTTPError{StatusCode: resp.StatusCode, Message: "fetch file"}
 	}
 
 	contentType := resp.Header.Get("Content-Type")
@@ -175,7 +174,7 @@ func (c *Client) FindAttachables() ([]Attachable, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no attachables could be found")
+		return nil, fmt.Errorf("%w: no attachables could be found", ErrNotFound)
 	}
 
 	attachables := make([]Attachable, 0, resp.QueryResponse.TotalCount)
@@ -188,7 +187,7 @@ func (c *Client) FindAttachables() ([]Attachable, error) {
 		}
 
 		if resp.QueryResponse.Attachables == nil {
-			return nil, errors.New("no attachables could be found")
+			return nil, fmt.Errorf("%w: no attachables could be found", ErrNotFound)
 		}
 
 		attachables = append(attachables, resp.QueryResponse.Attachables...)
@@ -230,7 +229,7 @@ func (c *Client) QueryAttachables(query string) ([]Attachable, error) {
 	}
 
 	if resp.QueryResponse.Attachables == nil {
-		return nil, errors.New("could not find any attachables")
+		return nil, fmt.Errorf("%w: could not find any attachables", ErrNotFound)
 	}
 
 	attachables := make([]Attachable, 0, len(resp.QueryResponse.Attachables))
@@ -257,7 +256,7 @@ func (c *Client) QueryAttachables(query string) ([]Attachable, error) {
 // UpdateAttachable updates the attachable
 func (c *Client) UpdateAttachable(attachable *Attachable) (*Attachable, error) {
 	if attachable.Id == "" {
-		return nil, errors.New("missing attachable id")
+		return nil, fmt.Errorf("%w: missing attachable id", ErrMissingID)
 	}
 
 	existingAttachable, err := c.FindAttachableById(attachable.Id)

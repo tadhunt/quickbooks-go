@@ -1,8 +1,8 @@
 package quickbooks
 
 import (
+	"fmt"
 	"encoding/json"
-	"errors"
 	"strconv"
 )
 
@@ -46,7 +46,7 @@ func (c *Client) CreateCreditMemo(creditMemo *CreditMemo) (*CreditMemo, error) {
 // DeleteCreditMemo deletes the given credit memo.
 func (c *Client) DeleteCreditMemo(creditMemo *CreditMemo) error {
 	if creditMemo.Id == "" || creditMemo.SyncToken == "" {
-		return errors.New("missing id/sync token")
+		return fmt.Errorf("%w: missing id/sync token", ErrMissingID)
 	}
 
 	return c.post("creditmemo", creditMemo, nil, map[string]string{"operation": "delete"})
@@ -68,7 +68,7 @@ func (c *Client) FindCreditMemos() ([]CreditMemo, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no credit memos could be found")
+		return nil, fmt.Errorf("%w: no credit memos could be found", ErrNotFound)
 	}
 
 	creditMemos := make([]CreditMemo, 0, resp.QueryResponse.TotalCount)
@@ -81,7 +81,7 @@ func (c *Client) FindCreditMemos() ([]CreditMemo, error) {
 		}
 
 		if resp.QueryResponse.CreditMemos == nil {
-			return nil, errors.New("no credit memos could be found")
+			return nil, fmt.Errorf("%w: no credit memos could be found", ErrNotFound)
 		}
 
 		creditMemos = append(creditMemos, resp.QueryResponse.CreditMemos...)
@@ -119,7 +119,7 @@ func (c *Client) QueryCreditMemos(query string) ([]CreditMemo, error) {
 	}
 
 	if resp.QueryResponse.CreditMemos == nil {
-		return nil, errors.New("could not find any credit memos")
+		return nil, fmt.Errorf("%w: could not find any credit memos", ErrNotFound)
 	}
 
 	return resp.QueryResponse.CreditMemos, nil
@@ -128,7 +128,7 @@ func (c *Client) QueryCreditMemos(query string) ([]CreditMemo, error) {
 // UpdateCreditMemo updates the given credit memo.
 func (c *Client) UpdateCreditMemo(creditMemo *CreditMemo) (*CreditMemo, error) {
 	if creditMemo.Id == "" {
-		return nil, errors.New("missing credit memo id")
+		return nil, fmt.Errorf("%w: missing credit memo id", ErrMissingID)
 	}
 
 	existingCreditMemo, err := c.FindCreditMemoById(creditMemo.Id)

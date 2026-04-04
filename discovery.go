@@ -22,26 +22,26 @@ func CallDiscoveryAPI(discoveryEndpoint EndpointUrl) (*DiscoveryAPI, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", string(discoveryEndpoint), nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create req: %v", err)
+		return nil, fmt.Errorf("failed to create req: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make req: %v", err)
+		return nil, fmt.Errorf("failed to make req: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read body: %v", err)
+		return nil, fmt.Errorf("failed to read body: %w", err)
 	}
 
 	respData := DiscoveryAPI{}
 	if err = json.Unmarshal(body, &respData); err != nil {
-		return nil, fmt.Errorf("error getting DiscoveryAPIResponse: %v", err)
+		return nil, fmt.Errorf("error getting DiscoveryAPIResponse: %w", err)
 	}
 
 	return &respData, nil

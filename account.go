@@ -1,8 +1,8 @@
 package quickbooks
 
 import (
+	"fmt"
 	"encoding/json"
-	"errors"
 	"strconv"
 )
 
@@ -76,7 +76,7 @@ func (c *Client) FindAccounts() ([]Account, error) {
 	}
 
 	if resp.QueryResponse.TotalCount == 0 {
-		return nil, errors.New("no accounts could be found")
+		return nil, fmt.Errorf("%w: no accounts could be found", ErrNotFound)
 	}
 
 	accounts := make([]Account, 0, resp.QueryResponse.TotalCount)
@@ -89,7 +89,7 @@ func (c *Client) FindAccounts() ([]Account, error) {
 		}
 
 		if resp.QueryResponse.Accounts == nil {
-			return nil, errors.New("no accounts could be found")
+			return nil, fmt.Errorf("%w: no accounts could be found", ErrNotFound)
 		}
 
 		accounts = append(accounts, resp.QueryResponse.Accounts...)
@@ -127,7 +127,7 @@ func (c *Client) QueryAccounts(query string) ([]Account, error) {
 	}
 
 	if resp.QueryResponse.Accounts == nil {
-		return nil, errors.New("could not find any accounts")
+		return nil, fmt.Errorf("%w: could not find any accounts", ErrNotFound)
 	}
 
 	return resp.QueryResponse.Accounts, nil
@@ -136,7 +136,7 @@ func (c *Client) QueryAccounts(query string) ([]Account, error) {
 // UpdateAccount updates the account
 func (c *Client) UpdateAccount(account *Account) (*Account, error) {
 	if account.Id == "" {
-		return nil, errors.New("missing account id")
+		return nil, fmt.Errorf("%w: missing account id", ErrMissingID)
 	}
 
 	existingAccount, err := c.FindAccountById(account.Id)

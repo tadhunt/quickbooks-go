@@ -5,7 +5,6 @@ package quickbooks
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -56,22 +55,22 @@ func NewClient(clientId string, clientSecret string, realmId string, isProductio
 	if isProduction {
 		client.endpoint, err = url.Parse(ProductionEndpoint.String() + "/v3/company/" + realmId + "/")
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse API endpoint: %v", err)
+			return nil, fmt.Errorf("failed to parse API endpoint: %w", err)
 		}
 
 		client.discoveryAPI, err = CallDiscoveryAPI(DiscoveryProductionEndpoint)
 		if err != nil {
-			return nil, fmt.Errorf("failed to obtain discovery endpoint: %v", err)
+			return nil, fmt.Errorf("failed to obtain discovery endpoint: %w", err)
 		}
 	} else {
 		client.endpoint, err = url.Parse(SandboxEndpoint.String() + "/v3/company/" + realmId + "/")
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse API endpoint: %v", err)
+			return nil, fmt.Errorf("failed to parse API endpoint: %w", err)
 		}
 
 		client.discoveryAPI, err = CallDiscoveryAPI(DiscoverySandboxEndpoint)
 		if err != nil {
-			return nil, fmt.Errorf("failed to obtain discovery endpoint: %v", err)
+			return nil, fmt.Errorf("failed to obtain discovery endpoint: %w", err)
 		}
 	}
 
@@ -92,7 +91,7 @@ func (c *Client) FindAuthorizationUrl(scope string, state string, redirectUri st
 
 	authorizationUrl, err := url.Parse(c.discoveryAPI.AuthorizationEndpoint)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse auth endpoint: %v", err)
+		return "", fmt.Errorf("failed to parse auth endpoint: %w", err)
 	}
 
 	urlValues := url.Values{}
@@ -109,7 +108,7 @@ func (c *Client) FindAuthorizationUrl(scope string, state string, redirectUri st
 func (c *Client) req(method string, endpoint string, payloadData interface{}, responseObject interface{}, queryParameters map[string]string) error {
 	// TODO: possibly just wait until c.throttled is false, and continue the request?
 	if c.throttled {
-		return errors.New("waiting for rate limit")
+		return ErrRateLimit
 	}
 
 	endpointUrl := *c.endpoint
@@ -132,13 +131,13 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 	if payloadData != nil {
 		marshalledJson, err = json.Marshal(payloadData)
 		if err != nil {
-			return fmt.Errorf("failed to marshal payload: %v", err)
+			return fmt.Errorf("failed to marshal payload: %w", err)
 		}
 	}
 
 	req, err := http.NewRequest(method, endpointUrl.String(), bytes.NewBuffer(marshalledJson))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %v", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Add("Accept", "application/json")
@@ -148,7 +147,7 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to make request: %v", err)
+		return fmt.Errorf("failed to make request: %w", err)
 	}
 
 	c.dumpResponse(resp)
@@ -176,7 +175,7 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 	if responseObject != nil {
 		err = json.Unmarshal(data, &responseObject)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal response into object: %v", err)
+			return fmt.Errorf("failed to unmarshal response into object: %w", err)
 		}
 		//		if err = json.NewDecoder(resp.Body).Decode(&responseObject); err != nil {
 		//			return fmt.Errorf("failed to unmarshal response into object: %v", err)

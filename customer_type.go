@@ -1,7 +1,7 @@
 package quickbooks
 
 import (
-	"errors"
+	"fmt"
 )
 
 type CustomerType struct {
@@ -42,7 +42,7 @@ func (c *Client) QueryCustomerTypes(query string) ([]CustomerType, error) {
 	}
 
 	if resp.QueryResponse.CustomerTypes == nil {
-		return nil, errors.New("could not find any customerTypes")
+		return nil, fmt.Errorf("%w: could not find any customerTypes", ErrNotFound)
 	}
 
 	return resp.QueryResponse.CustomerTypes, nil
