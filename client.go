@@ -40,7 +40,7 @@ type Client struct {
 // NewClient initializes a new QuickBooks client for interacting with their Online API
 func NewClient(clientId string, clientSecret string, realmId string, isProduction bool, minorVersion string, token *BearerToken, debug string) (c *Client, err error) {
 	if minorVersion == "" {
-		minorVersion = "65"
+		minorVersion = "70"
 	}
 
 	client := Client{
@@ -122,7 +122,7 @@ func (c *Client) req(method string, endpoint string, payloadData interface{}, re
 	}
 
 	urlValues.Set("minorversion", c.minorVersion)
-	urlValues.Encode()
+	urlValues.Set("include", "enhancedAllCustomFields")
 	endpointUrl.RawQuery = urlValues.Encode()
 
 	var err error
