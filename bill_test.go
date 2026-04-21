@@ -17,7 +17,7 @@ func TestBill(t *testing.T) {
 	}
 	defer jsonFile.Close()
 
-	byteValue, _ := io.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {
 		log.Fatal("When reading JSON file: ", err)
 	}
@@ -35,18 +35,21 @@ func TestBill(t *testing.T) {
 	assert.Equal(t, "33", r.Bill.APAccountRef.Value)
 	assert.Equal(t, "Norton Lumber and Building Materials", r.Bill.VendorRef.Name)
 	assert.Equal(t, "46", r.Bill.VendorRef.Value)
-	assert.Equal(t, "2014-11-06T00:00:00+00:00", r.Bill.TxnDate.String())
+
+	assertDateEqual(t, "2014-11-06", r.Bill.TxnDate)
+	assertDateEqual(t, "2014-12-06", r.Bill.DueDate)
+
 	totalAmt, _ := r.Bill.TotalAmt.Float64()
 	assert.Equal(t, 103.55, totalAmt)
 	assert.Equal(t, "United States Dollar", r.Bill.CurrencyRef.Name)
 	assert.Equal(t, "USD", r.Bill.CurrencyRef.Value)
 	// LinkedTxn
 	assert.Equal(t, "3", r.Bill.SalesTermRef.Value)
-	assert.Equal(t, "2014-12-06T00:00:00+00:00", r.Bill.DueDate.String())
 	assert.Equal(t, 1, len(r.Bill.Line))
 	balance, _ := r.Bill.Balance.Int64()
 	assert.Equal(t, int64(0), balance)
 	assert.Equal(t, "25", r.Bill.Id)
-	assert.Equal(t, "2014-11-06T15:37:25-08:00", r.Bill.MetaData.CreateTime.String())
-	assert.Equal(t, "2015-02-09T10:11:11-08:00", r.Bill.MetaData.LastUpdatedTime.String())
+
+	assertDateEqual(t, "2014-11-06T15:37:25-08:00", r.Bill.MetaData.CreateTime)
+	assertDateEqual(t, "2015-02-09T10:11:11-08:00", r.Bill.MetaData.LastUpdatedTime)
 }

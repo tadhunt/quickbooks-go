@@ -10,6 +10,12 @@ type Payment struct {
 	SyncToken           string        `json:",omitempty"`
 	Domain              string        `json:"domain,omitempty"`
 	DepositToAccountRef ReferenceType `json:",omitempty"`
+	ARAccountRef        ReferenceType `json:",omitempty"`
+	PaymentMethodRef    ReferenceType `json:",omitempty"`
+	CurrencyRef         ReferenceType `json:",omitempty"`
+	PaymentRefNum       string        `json:",omitempty"`
+	PrivateNote         string        `json:",omitempty"`
+	ExchangeRate        float64       `json:",omitempty"`
 	UnappliedAmt        float64       `json:",omitempty"`
 	TxnDate             Date          `json:",omitempty"`
 	TotalAmt            float64       `json:",omitempty"`

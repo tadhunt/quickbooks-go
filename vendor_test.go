@@ -39,6 +39,6 @@ func TestVendor(t *testing.T) {
 	assert.True(t, resp.Vendor.Active)
 	assert.Equal(t, "0", resp.Vendor.Balance.String())
 	assert.Equal(t, "30", resp.Vendor.Id)
-	assert.Equal(t, "2014-09-12T10:07:56-07:00", resp.Vendor.MetaData.CreateTime.String())
-	assert.Equal(t, "2014-09-17T11:13:46-07:00", resp.Vendor.MetaData.LastUpdatedTime.String())
+	assertDateEqual(t, "2014-09-12T10:07:56-07:00", resp.Vendor.MetaData.CreateTime)
+	assertDateEqual(t, "2014-09-17T11:13:46-07:00", resp.Vendor.MetaData.LastUpdatedTime)
 }

@@ -30,6 +30,6 @@ func TestAttachable(t *testing.T) {
 	assert.Equal(t, "95", r.Attachable.AttachableRef[0].EntityRef.Value)
 	assert.Equal(t, "This is an attached note.", r.Attachable.Note)
 	assert.Equal(t, "200900000000000008541", r.Attachable.Id)
-	assert.Equal(t, "2015-11-17T11:05:15-08:00", r.Attachable.MetaData.CreateTime.String())
-	assert.Equal(t, "2015-11-17T11:05:15-08:00", r.Attachable.MetaData.LastUpdatedTime.String())
+	assertDateEqual(t, "2015-11-17T11:05:15-08:00", r.Attachable.MetaData.CreateTime)
+	assertDateEqual(t, "2015-11-17T11:05:15-08:00", r.Attachable.MetaData.LastUpdatedTime)
 }

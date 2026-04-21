@@ -1,0 +1,45 @@
+{
+  "Payment": {
+    "CustomerRef": {
+      "value": "434",
+      "name": "Queens Public Library- Lefferts Branch - 9100"
+    },
+    "DepositToAccountRef": {
+      "value": "8"
+    },
+    "PaymentMethodRef": {
+      "value": "4"
+    },
+    "PaymentRefNum": "211274457922958",
+    "TotalAmt": 300.00,
+    "UnappliedAmt": 0,
+    "ProcessPayment": false,
+    "domain": "QBO",
+    "sparse": false,
+    "Id": "3213",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-01-07T08:34:14-08:00",
+      "LastUpdatedTime": "2026-01-07T08:34:14-08:00"
+    },
+    "TxnDate": "2026-01-02",
+    "CurrencyRef": {
+      "value": "USD",
+      "name": "United States Dollar"
+    },
+    "ExchangeRate": 1,
+    "PrivateNote": "ISA*00*NV        *00*NV        *ZZ*NV             *ZZ*NV             *251231*1020*&*00400*000000000*0*P*?\\GS*RA*NV*NV*20251231*1020*0*X*004020\\ST*820*0001\\BPR*I*300.00*C*ACH*CTX*01*026013673*DA*7920918435*1111904262**01*091311229*DA*202365866281**VEN\\ENT*1\\RMR*OI*12/18/20259100**300.00*300.00*0.00\\SE*5*0001\\GE*1*0\\IEA*1*000000000\\",
+    "Line": [
+      {
+        "Amount": 300.00,
+        "LinkedTxn": [
+          {
+            "TxnId": "2894",
+            "TxnType": "Invoice"
+          }
+        ]
+      }
+    ]
+  },
+  "time": "2026-01-07T08:34:14-08:00"
+}

@@ -35,6 +35,26 @@ type Client struct {
 	throttled bool
 
 	debug string
+
+	// companyTZ is the resolved IANA location for the QuickBooks
+	// company. Fetched from CompanyInfo.DefaultTimeZone during
+	// NewClient and used to anchor bare-date fields like TxnDate.
+	companyTZ *time.Location
+}
+
+// CompanyTimezone returns the QuickBooks company's configured timezone,
+// fetched from CompanyInfo.DefaultTimeZone during NewClient. Non-nil for
+// any Client constructed with a bearer token; nil when constructed
+// without one (the OAuth setup flow that produces an auth URL).
+func (c *Client) CompanyTimezone() *time.Location {
+	return c.companyTZ
+}
+
+// Time parses d using the company timezone. RFC3339 values ignore the
+// company timezone (they carry their own offset); bare YYYY-MM-DD values
+// are anchored at midnight in the company timezone.
+func (c *Client) Time(d Date) (time.Time, error) {
+	return d.In(c.companyTZ)
 }
 
 // NewClient initializes a new QuickBooks client for interacting with their Online API
@@ -76,6 +96,25 @@ func NewClient(clientId string, clientSecret string, realmId string, isProductio
 
 	if token != nil {
 		client.Client = getHttpClient(token)
+	}
+
+	// Fetch company timezone so bare-date fields can be anchored
+	// correctly. We fail construction if this can't be resolved
+	// because silently misinterpreting dates causes hard-to-spot
+	// data corruption (e.g. invoices recorded on the wrong day).
+	if client.Client != nil {
+		info, err := client.FindCompanyInfo()
+		if err != nil {
+			return nil, fmt.Errorf("fetch company info for timezone: %w", err)
+		}
+		if info.DefaultTimeZone == "" {
+			return nil, fmt.Errorf("company info missing DefaultTimeZone (realm %s)", realmId)
+		}
+		loc, err := time.LoadLocation(info.DefaultTimeZone)
+		if err != nil {
+			return nil, fmt.Errorf("load company timezone %q: %w", info.DefaultTimeZone, err)
+		}
+		client.companyTZ = loc
 	}
 
 	return &client, nil

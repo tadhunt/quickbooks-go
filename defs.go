@@ -4,9 +4,10 @@
 package quickbooks
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"time"
-
-	"github.com/markusmobius/go-dateparser"
 )
 
 type CustomField struct {
@@ -16,45 +17,55 @@ type CustomField struct {
 	Name         string `json:"Name,omitempty"`
 }
 
-// Date represents a Quickbooks date
+// Date holds a QuickBooks date or timestamp as the raw JSON bytes
+// returned by the API. QuickBooks returns two distinct shapes:
+//
+//   - A bare calendar date such as "2026-01-02" (used for fields like
+//     TxnDate, DueDate, CompanyStartDate). These have no timezone in
+//     the wire format and are intended to be interpreted in the
+//     QuickBooks company's configured timezone.
+//
+//   - An RFC3339 timestamp such as "2026-01-07T08:34:14-08:00" (used
+//     for MetaData.CreateTime, MetaData.LastUpdatedTime, etc.). These
+//     carry their own offset.
+//
+// Date deliberately does not parse on UnmarshalJSON because the
+// standard library's encoding/json passes no context to the
+// unmarshaler and bare dates can only be correctly anchored when
+// the company timezone is known. Parse with In(loc) at the call
+// site instead. For convenience, Client.Time(d) parses against the
+// company timezone fetched at Client construction.
 type Date struct {
-	time.Time `json:",omitempty"`
-	raw       []byte
+	json.RawMessage
 }
 
-func (d *Date) UnmarshalJSON(b []byte) error {
-	d.raw = make([]byte, len(b))
-	copy(d.raw, b)
-
-	if len(b) == 0 {
-		d.Time = time.Time{}
-		return nil
+// In returns the Date interpreted in loc. RFC3339 strings carry their
+// own offset and ignore loc; bare YYYY-MM-DD strings are anchored at
+// midnight in loc. An empty or null Date returns the zero time.
+func (d Date) In(loc *time.Location) (time.Time, error) {
+	if len(d.RawMessage) == 0 || bytes.Equal(d.RawMessage, []byte("null")) {
+		return time.Time{}, nil
 	}
-
-	if len(b) > 1 && b[0] == '"' && b[len(b)-1] == '"' {
-		b = b[1 : len(b)-1]
+	s := string(bytes.Trim(d.RawMessage, `"`))
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
 	}
-
-	dpcfg := &dateparser.Configuration{
-		DefaultTimezone: time.Local,
+	if t, err := time.ParseInLocation("2006-01-02", s, loc); err == nil {
+		return t, nil
 	}
-
-	date, err := dateparser.Parse(dpcfg, string(b))
-	if err != nil {
-		return err
-	}
-
-	d.Time = date.Time
-
-	return nil
+	return time.Time{}, fmt.Errorf("quickbooks: unrecognized date %q", s)
 }
 
-func (d Date) String() string {
-	return d.Format(DateFormat)
+// NewDate constructs an outgoing bare date from t (YYYY-MM-DD).
+// Use for fields like TxnDate and DueDate.
+func NewDate(t time.Time) Date {
+	return Date{RawMessage: []byte(fmt.Sprintf("%q", t.Format("2006-01-02")))}
 }
 
-func (d Date) GetRaw() []byte {
-	return d.raw
+// NewDateTime constructs an outgoing RFC3339 timestamp from t.
+// Use for fields like MetaData.CreateTime where a full datetime is expected.
+func NewDateTime(t time.Time) Date {
+	return Date{RawMessage: []byte(fmt.Sprintf("%q", t.Format(time.RFC3339)))}
 }
 
 // EmailAddress represents a QuickBooks email address.
@@ -75,10 +86,7 @@ const (
 	// SandboxEndpoint is for testing.
 	SandboxEndpoint EndpointUrl = "https://sandbox-quickbooks.api.intuit.com"
 
-	DateFormat    = "2006-01-02T15:04:05-07:00"
 	queryPageSize = 1000
-
-// secondFormat  = "2006-01-02"
 )
 
 func (u EndpointUrl) String() string {

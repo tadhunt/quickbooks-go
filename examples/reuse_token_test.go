@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rwestlund/quickbooks-go"
+	"github.com/tadhunt/quickbooks-go"
 	"github.com/stretchr/testify/require"
 )
 
 func TestReuseToken(t *testing.T) {
+	t.Skip("example only; replace placeholder credentials and saved tokens to run against a real QB sandbox")
+
 	clientId := "<your-client-id>"
 	clientSecret := "<your-client-secret>"
 	realmId := "<realm-id>"
@@ -18,7 +20,7 @@ func TestReuseToken(t *testing.T) {
 		AccessToken:  "<saved-access-token>",
 	}
 
-	qbClient, err := quickbooks.NewClient(clientId, clientSecret, realmId, false, "", &token)
+	qbClient, err := quickbooks.NewClient(clientId, clientSecret, realmId, false, "", &token, "")
 	require.NoError(t, err)
 
 	// Make a request!

@@ -18,6 +18,11 @@ type CompanyInfo struct {
 	// Email
 	// WebAddr
 	SupportedLanguages string
+	// DefaultTimeZone is the IANA timezone identifier configured for the
+	// QuickBooks company (e.g. "America/Los_Angeles"). It is the lens
+	// through which QuickBooks intends bare-date fields like TxnDate to
+	// be interpreted.
+	DefaultTimeZone string `json:",omitempty"`
 	// NameValue
 	Domain    string
 	Id        string

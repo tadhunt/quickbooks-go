@@ -4,16 +4,21 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/rwestlund/quickbooks-go"
+	"github.com/tadhunt/quickbooks-go"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAuthorizationFlow(t *testing.T) {
+	t.Skip("example only; replace placeholder credentials and the auth code to run against a real QB sandbox")
+
 	clientId := "<your-client-id>"
 	clientSecret := "<your-client-secret>"
 	realmId := "<realm-id>"
 
-	qbClient, err := quickbooks.NewClient(clientId, clientSecret, realmId, false, "", nil)
+	// Pre-token construction is used to derive the OAuth authorization
+	// URL; the company timezone is not fetched until a Client is built
+	// with a real bearer token.
+	qbClient, err := quickbooks.NewClient(clientId, clientSecret, realmId, false, "", nil, "")
 	require.NoError(t, err)
 
 	// To do first when you receive the authorization code from quickbooks callback
