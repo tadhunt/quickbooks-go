@@ -300,3 +300,8 @@ func (c *Client) post(endpoint string, payloadData interface{}, responseObject i
 func (c *Client) query(query string, responseObject interface{}) error {
 	return c.get("query", responseObject, map[string]string{"query": query})
 }
+
+// Query is a public wrapper around query for ad-hoc QBO SQL (probes, diagnostics).
+func (c *Client) Query(qstr string, responseObject interface{}) error {
+	return c.query(qstr, responseObject)
+}
