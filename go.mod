@@ -1,4 +1,4 @@
-module github.com/tadhunt/quickbooks-go
+module github.com/tadhunt/quickbooks-go/v2
 
 go 1.20
 
