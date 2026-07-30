@@ -77,27 +77,6 @@ func (c *Client) FindCreditMemoById(id string) (*CreditMemo, error) {
 	return &resp.CreditMemo, nil
 }
 
-// QueryCreditMemos accepts n SQL query and returns all credit memos found using it.
-func (c *Client) QueryCreditMemos(query string) ([]CreditMemo, error) {
-	var resp struct {
-		QueryResponse struct {
-			CreditMemos   []CreditMemo `json:"CreditMemo"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.CreditMemos == nil {
-		return nil, fmt.Errorf("%w: could not find any credit memos", ErrNotFound)
-	}
-
-	return resp.QueryResponse.CreditMemos, nil
-}
-
 // UpdateCreditMemo updates the given credit memo.
 func (c *Client) UpdateCreditMemo(creditMemo *CreditMemo) (*CreditMemo, error) {
 	if creditMemo.Id == "" {

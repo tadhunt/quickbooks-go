@@ -59,6 +59,24 @@ type pagedEntity interface {
 	entityCreateTime() Date
 }
 
+// whereClause joins a scan's entity filter and its cursor comparison into a
+// WHERE clause, omitting it entirely when neither is present. Composing here
+// rather than in either producer is what lets the two combine safely: the
+// library wrote both halves, so it knows there is no existing WHERE to collide
+// with and no ORDERBY to insert ahead of.
+func whereClause(predicate, cursor string) string {
+	switch {
+	case predicate != "" && cursor != "":
+		return " WHERE " + predicate + " AND " + cursor
+	case predicate != "":
+		return " WHERE " + predicate
+	case cursor != "":
+		return " WHERE " + cursor
+	}
+
+	return ""
+}
+
 // queryEnvelope decodes a paged SELECT response without naming the entity's
 // array key statically. The key is the entity name, which differs per entity,
 // so it is looked up rather than declared.
@@ -70,13 +88,23 @@ type queryEnvelope struct {
 // MetaData.CreateTime. See the file comment above for why paging works this way,
 // and verifyScanComplete for what guards it.
 func findAll[T pagedEntity](c *Client) ([]T, error) {
+	return findAllWhere[T](c, "")
+}
+
+// findAllWhere is findAll restricted to rows matching predicate.
+//
+// The predicate is a QBO SQL fragment and is composed into the query, so it
+// must originate inside this package -- exported APIs take a library-owned
+// constant and translate it here. Nothing built from caller input reaches this
+// parameter, which is why it is not escaped or validated.
+func findAllWhere[T pagedEntity](c *Client, predicate string) ([]T, error) {
 	// The entity name is a property of the type, not of any row, so it is
 	// read off the zero value -- there is no instance to ask until after the
 	// first query, which needs the name in order to run.
 	var zero T
 	entity := zero.EntityName()
 
-	reported, err := c.countEntity(entity)
+	reported, err := c.countEntity(entity, predicate)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +119,7 @@ func findAll[T pagedEntity](c *Client) ([]T, error) {
 
 	for {
 		pageSize := c.pageSize()
-		query := "SELECT * FROM " + entity + cursor.where() +
+		query := "SELECT * FROM " + entity + whereClause(predicate, cursor.condition()) +
 			" ORDERBY MetaData.CreateTime ASC MAXRESULTS " + strconv.Itoa(pageSize)
 
 		var env queryEnvelope
@@ -151,12 +179,14 @@ func newCreateTimeCursor() *createTimeCursor {
 	return &createTimeCursor{seen: map[string]bool{}}
 }
 
-// where returns the predicate selecting the next page, or "" for the first.
-func (cur *createTimeCursor) where() string {
+// condition returns the cursor's comparison on its own, or "" on the first
+// page. The caller composes it into a WHERE clause, since a scan may also carry
+// an entity filter that has to be ANDed with it.
+func (cur *createTimeCursor) condition() string {
 	if cur.value == "" {
 		return ""
 	}
-	return " WHERE MetaData.CreateTime >= '" + cur.value + "'"
+	return "MetaData.CreateTime >= '" + cur.value + "'"
 }
 
 // collect reports whether id is new, recording it when so. Rows that are not
@@ -215,11 +245,21 @@ type countResponse struct {
 	}
 }
 
-// countEntity asks QuickBooks how many rows an entity holds.
-func (c *Client) countEntity(entity string) (int, error) {
+// countEntity asks QuickBooks how many rows an entity holds, restricted by the
+// same predicate the scan will use.
+//
+// The predicate is not optional bookkeeping: verifyScanComplete compares the
+// scan against this number, so counting the whole entity while scanning a
+// filtered subset would report a shortfall on every run.
+func (c *Client) countEntity(entity, predicate string) (int, error) {
+	query := "SELECT COUNT(*) FROM " + entity
+	if predicate != "" {
+		query += " WHERE " + predicate
+	}
+
 	var count countResponse
 
-	if err := c.query("SELECT COUNT(*) FROM "+entity, &count); err != nil {
+	if err := c.query(query, &count); err != nil {
 		return 0, err
 	}
 

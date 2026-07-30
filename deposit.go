@@ -64,27 +64,6 @@ func (c *Client) FindDepositById(id string) (*Deposit, error) {
 	return &resp.Deposit, nil
 }
 
-// QueryDeposits accepts an SQL query and returns all deposits found using it
-func (c *Client) QueryDeposits(query string) ([]Deposit, error) {
-	var resp struct {
-		QueryResponse struct {
-			Deposits      []Deposit `json:"Deposit"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Deposits == nil {
-		return nil, fmt.Errorf("%w: could not find any deposits", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Deposits, nil
-}
-
 // UpdateDeposit updates the deposit
 func (c *Client) UpdateDeposit(deposit *Deposit) (*Deposit, error) {
 	if deposit.Id == "" {

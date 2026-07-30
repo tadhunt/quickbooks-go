@@ -77,27 +77,6 @@ func (c *Client) FindEstimateById(id string) (*Estimate, error) {
 	return &resp.Estimate, nil
 }
 
-// QueryEstimates accepts an SQL query and returns all estimates found using it
-func (c *Client) QueryEstimates(query string) ([]Estimate, error) {
-	var resp struct {
-		QueryResponse struct {
-			Estimates     []Estimate `json:"Estimate"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Estimates == nil {
-		return nil, fmt.Errorf("%w: could not find any estimates", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Estimates, nil
-}
-
 // SendEstimate sends the estimate to the Estimate.BillEmail if emailAddress is left empty
 func (c *Client) SendEstimate(estimateId string, emailAddress string) error {
 	queryParameters := make(map[string]string)

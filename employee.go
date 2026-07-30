@@ -61,27 +61,6 @@ func (c *Client) FindEmployeeById(id string) (*Employee, error) {
 	return &resp.Employee, nil
 }
 
-// QueryEmployees accepts an SQL query and returns all employees found using it
-func (c *Client) QueryEmployees(query string) ([]Employee, error) {
-	var resp struct {
-		QueryResponse struct {
-			Employees     []Employee `json:"Employee"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Employees == nil {
-		return nil, fmt.Errorf("%w: could not find any employees", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Employees, nil
-}
-
 // UpdateEmployee updates the employee
 func (c *Client) UpdateEmployee(employee *Employee) (*Employee, error) {
 	if employee.Id == "" {

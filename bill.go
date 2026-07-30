@@ -81,27 +81,6 @@ func (c *Client) FindBillById(id string) (*Bill, error) {
 	return &resp.Bill, nil
 }
 
-// QueryBills accepts an SQL query and returns all bills found using it
-func (c *Client) QueryBills(query string) ([]Bill, error) {
-	var resp struct {
-		QueryResponse struct {
-			Bills         []Bill `json:"Bill"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Bills == nil {
-		return nil, fmt.Errorf("%w: could not find any bills", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Bills, nil
-}
-
 // UpdateBill updates the bill
 func (c *Client) UpdateBill(bill *Bill) (*Bill, error) {
 	if bill.Id == "" {

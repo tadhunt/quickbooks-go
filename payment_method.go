@@ -3,10 +3,6 @@
 
 package quickbooks
 
-import (
-	"fmt"
-)
-
 // PaymentMethod represents a QuickBooks PaymentMethod entity (the display-name
 // table referenced by Payment.PaymentMethodRef). QB Online exposes only the
 // ID on read-side references, so fetching the full list is required to
@@ -61,26 +57,4 @@ func (c *Client) FindPaymentMethodById(id string) (*PaymentMethod, error) {
 	}
 
 	return &resp.PaymentMethod, nil
-}
-
-// QueryPaymentMethods accepts an SQL query and returns all PaymentMethods
-// found using it.
-func (c *Client) QueryPaymentMethods(query string) ([]PaymentMethod, error) {
-	var resp struct {
-		QueryResponse struct {
-			PaymentMethods []PaymentMethod `json:"PaymentMethod"`
-			StartPosition  int
-			MaxResults     int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.PaymentMethods == nil {
-		return nil, fmt.Errorf("%w: could not find any payment methods", ErrNotFound)
-	}
-
-	return resp.QueryResponse.PaymentMethods, nil
 }

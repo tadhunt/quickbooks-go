@@ -77,27 +77,6 @@ func (c *Client) FindItemById(id string) (*Item, error) {
 	return &resp.Item, nil
 }
 
-// QueryItems accepts an SQL query and returns all items found using it
-func (c *Client) QueryItems(query string) ([]Item, error) {
-	var resp struct {
-		QueryResponse struct {
-			Items         []Item `json:"Item"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Items == nil {
-		return nil, fmt.Errorf("%w: could not find any items", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Items, nil
-}
-
 // UpdateItem updates the item
 func (c *Client) UpdateItem(item *Item) (*Item, error) {
 	if item.Id == "" {

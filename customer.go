@@ -141,27 +141,6 @@ func (c *Client) FindCustomerByName(name string) (*Customer, error) {
 	return &resp.QueryResponse.Customer[0], nil
 }
 
-// QueryCustomers accepts an SQL query and returns all customers found using it
-func (c *Client) QueryCustomers(query string) ([]Customer, error) {
-	var resp struct {
-		QueryResponse struct {
-			Customers     []Customer `json:"Customer"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Customers == nil {
-		return nil, fmt.Errorf("%w: could not find any customers", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Customers, nil
-}
-
 // UpdateCustomer updates the given Customer on the QuickBooks server,
 // returning the resulting Customer object. It's a sparse update, as not all QB
 // fields are present in our Customer object.

@@ -79,27 +79,6 @@ func (c *Client) FindPaymentById(id string) (*Payment, error) {
 	return &resp.Payment, nil
 }
 
-// QueryPayments accepts a SQL query and returns all payments found using it.
-func (c *Client) QueryPayments(query string) ([]Payment, error) {
-	var resp struct {
-		QueryResponse struct {
-			Payments      []Payment `json:"Payment"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Payments == nil {
-		return nil, fmt.Errorf("%w: could not find any payments", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Payments, nil
-}
-
 // UpdatePayment updates the given payment in QuickBooks.
 func (c *Client) UpdatePayment(payment *Payment) (*Payment, error) {
 	if payment.Id == "" {

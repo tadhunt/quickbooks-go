@@ -181,27 +181,6 @@ func (c *Client) FindInvoiceById(id string) (*Invoice, error) {
 	return &resp.Invoice, nil
 }
 
-// QueryInvoices accepts an SQL query and returns all invoices found using it
-func (c *Client) QueryInvoices(query string) ([]Invoice, error) {
-	var resp struct {
-		QueryResponse struct {
-			Invoices      []Invoice `json:"Invoice"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Invoices == nil {
-		return nil, fmt.Errorf("%w: could not find any invoices", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Invoices, nil
-}
-
 // SendInvoice sends the invoice to the Invoice.BillEmail if emailAddress is left empty
 func (c *Client) SendInvoice(invoiceId string, emailAddress string) error {
 	queryParameters := make(map[string]string)

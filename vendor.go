@@ -84,27 +84,6 @@ func (c *Client) FindVendorById(id string) (*Vendor, error) {
 	return &resp.Vendor, nil
 }
 
-// QueryVendors accepts an SQL query and returns all vendors found using it
-func (c *Client) QueryVendors(query string) ([]Vendor, error) {
-	var resp struct {
-		QueryResponse struct {
-			Vendors       []Vendor `json:"Vendor"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Vendors == nil {
-		return nil, fmt.Errorf("%w: could not find any vendors", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Vendors, nil
-}
-
 // UpdateVendor updates the vendor
 func (c *Client) UpdateVendor(vendor *Vendor) (*Vendor, error) {
 	if vendor.Id == "" {

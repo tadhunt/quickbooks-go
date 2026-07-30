@@ -85,27 +85,6 @@ func (c *Client) FindAccountById(id string) (*Account, error) {
 	return &resp.Account, nil
 }
 
-// QueryAccounts accepts an SQL query and returns all accounts found using it
-func (c *Client) QueryAccounts(query string) ([]Account, error) {
-	var resp struct {
-		QueryResponse struct {
-			Accounts      []Account `json:"Account"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Accounts == nil {
-		return nil, fmt.Errorf("%w: could not find any accounts", ErrNotFound)
-	}
-
-	return resp.QueryResponse.Accounts, nil
-}
-
 // UpdateAccount updates the account
 func (c *Client) UpdateAccount(account *Account) (*Account, error) {
 	if account.Id == "" {

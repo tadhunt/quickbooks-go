@@ -165,9 +165,66 @@ func (v Attachable) entityId() string { return v.Id }
 
 func (v Attachable) entityCreateTime() Date { return v.MetaData.CreateTime }
 
-// FindAttachables gets the full list of Attachables in the QuickBooks account.
-func (c *Client) FindAttachables() ([]Attachable, error) {
-	return findAll[Attachable](c)
+// AttachableFilter selects which Attachables a scan returns.
+//
+// The values are opaque on purpose. An earlier API took a caller-supplied QBO
+// SQL string, which meant the library could not paginate it (see the comment at
+// the top of pagination.go) and put query syntax in every caller. Callers now
+// name a filter and the library owns the clause behind it. Add a constant here
+// to support a new one.
+type AttachableFilter int
+
+const (
+	// AllAttachables places no restriction on the scan. It is the zero
+	// value, so the empty filter means "everything".
+	AllAttachables AttachableFilter = iota
+
+	// InvoiceAttachables restricts the scan to attachments linked to invoices.
+	InvoiceAttachables
+
+	// PaymentAttachables restricts the scan to attachments linked to payments.
+	PaymentAttachables
+)
+
+// predicate returns the QBO SQL fragment for f, or an error if f is not one of
+// the defined filters. An unknown value fails the scan rather than silently
+// widening it to everything.
+func (f AttachableFilter) predicate() (string, error) {
+	switch f {
+	case AllAttachables:
+		return "", nil
+	case InvoiceAttachables:
+		return "AttachableRef.EntityRef.Type = 'Invoice'", nil
+	case PaymentAttachables:
+		return "AttachableRef.EntityRef.Type = 'Payment'", nil
+	}
+
+	return "", fmt.Errorf("unknown attachable filter %d", int(f))
+}
+
+// String implements fmt.Stringer so a filter reads sensibly in logs.
+func (f AttachableFilter) String() string {
+	switch f {
+	case AllAttachables:
+		return "all"
+	case InvoiceAttachables:
+		return "invoice"
+	case PaymentAttachables:
+		return "payment"
+	}
+
+	return "AttachableFilter(" + strconv.Itoa(int(f)) + ")"
+}
+
+// FindAttachables gets the full list of Attachables matching filter. Pass
+// AllAttachables for every attachment in the account.
+func (c *Client) FindAttachables(filter AttachableFilter) ([]Attachable, error) {
+	predicate, err := filter.predicate()
+	if err != nil {
+		return nil, err
+	}
+
+	return findAllWhere[Attachable](c, predicate)
 }
 
 // FindAttachableById finds the attachable by the given id
@@ -182,49 +239,6 @@ func (c *Client) FindAttachableById(id string) (*Attachable, error) {
 	}
 
 	return &resp.Attachable, nil
-}
-
-// QueryAttachables accepts an SQL query and returns all attachables found using it.
-// The query should not include STARTPOSITION or MAXRESULTS — pagination is handled automatically.
-func (c *Client) QueryAttachables(query string) ([]Attachable, error) {
-	var resp struct {
-		QueryResponse struct {
-			Attachables   []Attachable `json:"Attachable"`
-			StartPosition int
-			MaxResults    int
-			TotalCount    int
-		}
-	}
-
-	// First page
-	pagedQuery := query + " STARTPOSITION 1 MAXRESULTS " + strconv.Itoa(c.pageSize())
-	if err := c.query(pagedQuery, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.Attachables == nil {
-		return nil, fmt.Errorf("%w: could not find any attachables", ErrNotFound)
-	}
-
-	attachables := make([]Attachable, 0, len(resp.QueryResponse.Attachables))
-	attachables = append(attachables, resp.QueryResponse.Attachables...)
-
-	// Fetch remaining pages if there are more
-	for len(attachables) < resp.QueryResponse.TotalCount {
-		pagedQuery = query + " STARTPOSITION " + strconv.Itoa(len(attachables)+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(pagedQuery, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Attachables == nil {
-			break
-		}
-
-		attachables = append(attachables, resp.QueryResponse.Attachables...)
-	}
-
-	return attachables, nil
 }
 
 // UpdateAttachable updates the attachable

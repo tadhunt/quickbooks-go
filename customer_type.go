@@ -1,9 +1,5 @@
 package quickbooks
 
-import (
-	"fmt"
-)
-
 type CustomerType struct {
 	SyncToken string   `json:",omitempty"`
 	Domain    string   `json:"domain,omitempty"`
@@ -27,23 +23,14 @@ func (c *Client) FindCustomerTypeById(id string) (*CustomerType, error) {
 	return &r.CustomerType, nil
 }
 
-// QueryCustomerTypes accepts an SQL query and returns all customerTypes found using it
-func (c *Client) QueryCustomerTypes(query string) ([]CustomerType, error) {
-	var resp struct {
-		QueryResponse struct {
-			CustomerTypes []CustomerType `json:"CustomerType"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
+// EntityName returns the QuickBooks entity name for CustomerType.
+func (CustomerType) EntityName() string { return "CustomerType" }
 
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
+func (v CustomerType) entityId() string { return v.Id }
 
-	if resp.QueryResponse.CustomerTypes == nil {
-		return nil, fmt.Errorf("%w: could not find any customerTypes", ErrNotFound)
-	}
+func (v CustomerType) entityCreateTime() Date { return v.MetaData.CreateTime }
 
-	return resp.QueryResponse.CustomerTypes, nil
+// FindCustomerTypes gets the full list of CustomerTypes in the QuickBooks account.
+func (c *Client) FindCustomerTypes() ([]CustomerType, error) {
+	return findAll[CustomerType](c)
 }

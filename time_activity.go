@@ -1,9 +1,5 @@
 package quickbooks
 
-import (
-	"fmt"
-)
-
 type TimeActivity struct {
 	Id             string         `json:",omitempty"`
 	SyncToken      string         `json:",omitempty"`
@@ -56,25 +52,4 @@ func (c *Client) FindTimeActivityById(id string) (*TimeActivity, error) {
 	}
 
 	return &resp.TimeActivity, nil
-}
-
-// QueryTimeActivities accepts an SQL query and returns all time activities found using it
-func (c *Client) QueryTimeActivities(query string) ([]TimeActivity, error) {
-	var resp struct {
-		QueryResponse struct {
-			TimeActivity  []TimeActivity `json:"TimeActivity"`
-			StartPosition int
-			MaxResults    int
-		}
-	}
-
-	if err := c.query(query, &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TimeActivity == nil {
-		return nil, fmt.Errorf("%w: could not find any time activities", ErrNotFound)
-	}
-
-	return resp.QueryResponse.TimeActivity, nil
 }
