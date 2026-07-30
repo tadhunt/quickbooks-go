@@ -158,42 +158,16 @@ func (c *Client) DownloadAttachableContent(id string, w io.Writer) (string, int6
 	return contentType, n, nil
 }
 
-// FindAttachables gets the full list of Attachables in the QuickBooks attachable.
+// EntityName returns the QuickBooks entity name for Attachable.
+func (Attachable) EntityName() string { return "Attachable" }
+
+func (v Attachable) entityId() string { return v.Id }
+
+func (v Attachable) entityCreateTime() Date { return v.MetaData.CreateTime }
+
+// FindAttachables gets the full list of Attachables in the QuickBooks account.
 func (c *Client) FindAttachables() ([]Attachable, error) {
-	var resp struct {
-		QueryResponse struct {
-			Attachables   []Attachable `json:"Attachable"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Attachable", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no attachables could be found", ErrNotFound)
-	}
-
-	attachables := make([]Attachable, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Attachable ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Attachables == nil {
-			return nil, fmt.Errorf("%w: no attachables could be found", ErrNotFound)
-		}
-
-		attachables = append(attachables, resp.QueryResponse.Attachables...)
-	}
-
-	return attachables, nil
+	return findAll[Attachable](c)
 }
 
 // FindAttachableById finds the attachable by the given id

@@ -191,11 +191,15 @@ func (cur *createTimeCursor) advance(d Date) error {
 	return nil
 }
 
-// stalled builds the error for a full page that contained nothing new, which
-// means a single CreateTime value spans at least a whole page and the cursor
-// cannot move past it.
+// stalled builds the error for a full page that contained nothing new.
+//
+// A full page of already-collected rows can only happen when every row on it
+// carries the cursor's timestamp, so at least pageSize rows share that value --
+// possibly more, since the page cannot show what lies beyond it. The bound is
+// "at least", not "more than": a tie group of exactly pageSize stalls too,
+// because the >= predicate re-reads it in full and never gets past it.
 func (cur *createTimeCursor) stalled(entity string, pageSize int) error {
-	return fmt.Errorf("%s pagination stalled at MetaData.CreateTime %q: more than %d rows share that timestamp",
+	return fmt.Errorf("%s pagination stalled at MetaData.CreateTime %q: at least %d rows share that timestamp",
 		entity, cur.value, pageSize)
 }
 
