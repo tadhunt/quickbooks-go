@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"fmt"
 	"errors"
-	"strconv"
 )
 
 type Deposit struct {
@@ -39,42 +38,16 @@ func (c *Client) DeleteDeposit(deposit *Deposit) error {
 	return c.post("deposit", deposit, nil, map[string]string{"operation": "delete"})
 }
 
+// EntityName returns the QuickBooks entity name for Deposit.
+func (Deposit) EntityName() string { return "Deposit" }
+
+func (v Deposit) entityId() string { return v.Id }
+
+func (v Deposit) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindDeposits gets the full list of Deposits in the QuickBooks account.
 func (c *Client) FindDeposits() ([]Deposit, error) {
-	var resp struct {
-		QueryResponse struct {
-			Deposits      []Deposit `json:"Deposit"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Deposit", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no deposits could be found", ErrNotFound)
-	}
-
-	deposits := make([]Deposit, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Deposit ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Deposits == nil {
-			return nil, fmt.Errorf("%w: no deposits could be found", ErrNotFound)
-		}
-
-		deposits = append(deposits, resp.QueryResponse.Deposits...)
-	}
-
-	return deposits, nil
+	return findAll[Deposit](c)
 }
 
 // FindDepositById returns an deposit with a given Id.

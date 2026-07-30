@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"fmt"
 	"encoding/json"
-	"strconv"
 )
 
 type CreditMemo struct {
@@ -52,42 +51,16 @@ func (c *Client) DeleteCreditMemo(creditMemo *CreditMemo) error {
 	return c.post("creditmemo", creditMemo, nil, map[string]string{"operation": "delete"})
 }
 
-// FindCreditMemos retrieves the full list of credit memos from QuickBooks.
+// EntityName returns the QuickBooks entity name for CreditMemo.
+func (CreditMemo) EntityName() string { return "CreditMemo" }
+
+func (v CreditMemo) entityId() string { return v.Id }
+
+func (v CreditMemo) entityCreateTime() Date { return v.MetaData.CreateTime }
+
+// FindCreditMemos gets the full list of CreditMemos in the QuickBooks account.
 func (c *Client) FindCreditMemos() ([]CreditMemo, error) {
-	var resp struct {
-		QueryResponse struct {
-			CreditMemos   []CreditMemo `json:"CreditMemo"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM CreditMemo", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no credit memos could be found", ErrNotFound)
-	}
-
-	creditMemos := make([]CreditMemo, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM CreditMemo ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.CreditMemos == nil {
-			return nil, fmt.Errorf("%w: no credit memos could be found", ErrNotFound)
-		}
-
-		creditMemos = append(creditMemos, resp.QueryResponse.CreditMemos...)
-	}
-
-	return creditMemos, nil
+	return findAll[CreditMemo](c)
 }
 
 // FindCreditMemoById retrieves the given credit memo from QuickBooks.

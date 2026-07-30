@@ -6,7 +6,6 @@ package quickbooks
 import (
 	"fmt"
 	"encoding/json"
-	"strconv"
 )
 
 // Item represents a QuickBooks Item object (a product type).
@@ -52,42 +51,16 @@ func (c *Client) CreateItem(item *Item) (*Item, error) {
 	return &resp.Item, nil
 }
 
+// EntityName returns the QuickBooks entity name for Item.
+func (Item) EntityName() string { return "Item" }
+
+func (v Item) entityId() string { return v.Id }
+
+func (v Item) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindItems gets the full list of Items in the QuickBooks account.
 func (c *Client) FindItems() ([]Item, error) {
-	var resp struct {
-		QueryResponse struct {
-			Items         []Item `json:"Item"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Item", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no items could be found", ErrNotFound)
-	}
-
-	items := make([]Item, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Item ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Items == nil {
-			return nil, fmt.Errorf("%w: no items could be found", ErrNotFound)
-		}
-
-		items = append(items, resp.QueryResponse.Items...)
-	}
-
-	return items, nil
+	return findAll[Item](c)
 }
 
 // FindItemById returns an item with a given Id.

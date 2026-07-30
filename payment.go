@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"fmt"
 	"errors"
-	"strconv"
 )
 
 type Payment struct {
@@ -54,42 +53,16 @@ func (c *Client) DeletePayment(payment *Payment) error {
 	return c.post("payment", payment, nil, map[string]string{"operation": "delete"})
 }
 
+// EntityName returns the QuickBooks entity name for Payment.
+func (Payment) EntityName() string { return "Payment" }
+
+func (v Payment) entityId() string { return v.Id }
+
+func (v Payment) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindPayments gets the full list of Payments in the QuickBooks account.
 func (c *Client) FindPayments() ([]Payment, error) {
-	var resp struct {
-		QueryResponse struct {
-			Payments      []Payment `json:"Payment"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Payment", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no payments could be found", ErrNotFound)
-	}
-
-	payments := make([]Payment, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Payment ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Payments == nil {
-			return nil, fmt.Errorf("%w: no payments could be found", ErrNotFound)
-		}
-
-		payments = append(payments, resp.QueryResponse.Payments...)
-	}
-
-	return payments, nil
+	return findAll[Payment](c)
 }
 
 // FindPaymentById returns an payment with a given Id.

@@ -2,7 +2,6 @@ package quickbooks
 
 import (
 	"fmt"
-	"strconv"
 )
 
 type Employee struct {
@@ -36,42 +35,16 @@ func (c *Client) CreateEmployee(employee *Employee) (*Employee, error) {
 	return &resp.Employee, nil
 }
 
+// EntityName returns the QuickBooks entity name for Employee.
+func (Employee) EntityName() string { return "Employee" }
+
+func (v Employee) entityId() string { return v.Id }
+
+func (v Employee) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindEmployees gets the full list of Employees in the QuickBooks account.
 func (c *Client) FindEmployees() ([]Employee, error) {
-	var resp struct {
-		QueryResponse struct {
-			Employees     []Employee `json:"Employee"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Employee", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no employees could be found", ErrNotFound)
-	}
-
-	employees := make([]Employee, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Employee ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Employees == nil {
-			return nil, fmt.Errorf("%w: no employees could be found", ErrNotFound)
-		}
-
-		employees = append(employees, resp.QueryResponse.Employees...)
-	}
-
-	return employees, nil
+	return findAll[Employee](c)
 }
 
 // FindEmployeeById returns an employee with a given Id.

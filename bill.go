@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"fmt"
 	"encoding/json"
-	"strconv"
 )
 
 type Bill struct {
@@ -56,42 +55,16 @@ func (c *Client) DeleteBill(bill *Bill) error {
 	return c.post("bill", bill, nil, map[string]string{"operation": "delete"})
 }
 
+// EntityName returns the QuickBooks entity name for Bill.
+func (Bill) EntityName() string { return "Bill" }
+
+func (v Bill) entityId() string { return v.Id }
+
+func (v Bill) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindBills gets the full list of Bills in the QuickBooks account.
 func (c *Client) FindBills() ([]Bill, error) {
-	var resp struct {
-		QueryResponse struct {
-			Bills         []Bill `json:"Bill"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Bill", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no bills could be found", ErrNotFound)
-	}
-
-	bills := make([]Bill, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Bill ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Bills == nil {
-			return nil, fmt.Errorf("%w: no bills could be found", ErrNotFound)
-		}
-
-		bills = append(bills, resp.QueryResponse.Bills...)
-	}
-
-	return bills, nil
+	return findAll[Bill](c)
 }
 
 // FindBillById finds the bill by the given id

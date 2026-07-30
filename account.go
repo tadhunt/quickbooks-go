@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"fmt"
 	"encoding/json"
-	"strconv"
 )
 
 const (
@@ -60,42 +59,16 @@ func (c *Client) CreateAccount(account *Account) (*Account, error) {
 	return &resp.Account, nil
 }
 
+// EntityName returns the QuickBooks entity name for Account.
+func (Account) EntityName() string { return "Account" }
+
+func (v Account) entityId() string { return v.Id }
+
+func (v Account) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindAccounts gets the full list of Accounts in the QuickBooks account.
 func (c *Client) FindAccounts() ([]Account, error) {
-	var resp struct {
-		QueryResponse struct {
-			Accounts      []Account `json:"Account"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Account", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no accounts could be found", ErrNotFound)
-	}
-
-	accounts := make([]Account, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Account ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Accounts == nil {
-			return nil, fmt.Errorf("%w: no accounts could be found", ErrNotFound)
-		}
-
-		accounts = append(accounts, resp.QueryResponse.Accounts...)
-	}
-
-	return accounts, nil
+	return findAll[Account](c)
 }
 
 // FindAccountById returns an account with a given Id.

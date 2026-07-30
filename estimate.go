@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"fmt"
 	"errors"
-	"strconv"
 )
 
 type Estimate struct {
@@ -52,42 +51,16 @@ func (c *Client) DeleteEstimate(estimate *Estimate) error {
 	return c.post("estimate", estimate, nil, map[string]string{"operation": "delete"})
 }
 
+// EntityName returns the QuickBooks entity name for Estimate.
+func (Estimate) EntityName() string { return "Estimate" }
+
+func (v Estimate) entityId() string { return v.Id }
+
+func (v Estimate) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindEstimates gets the full list of Estimates in the QuickBooks account.
 func (c *Client) FindEstimates() ([]Estimate, error) {
-	var resp struct {
-		QueryResponse struct {
-			Estimates     []Estimate `json:"Estimate"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Estimate", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no estimates could be found", ErrNotFound)
-	}
-
-	estimates := make([]Estimate, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Estimate ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Estimates == nil {
-			return nil, fmt.Errorf("%w: no estimates could be found", ErrNotFound)
-		}
-
-		estimates = append(estimates, resp.QueryResponse.Estimates...)
-	}
-
-	return estimates, nil
+	return findAll[Estimate](c)
 }
 
 // FindEstimateById finds the estimate by the given id

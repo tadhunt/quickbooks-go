@@ -2,7 +2,6 @@ package quickbooks
 
 import (
 	"fmt"
-	"strconv"
 )
 
 type TimeActivity struct {
@@ -33,42 +32,16 @@ func (c *Client) CreateTimeActivity(timeActivity *TimeActivity) (*TimeActivity, 
 	return &resp.TimeActivity, nil
 }
 
+// EntityName returns the QuickBooks entity name for TimeActivity.
+func (TimeActivity) EntityName() string { return "TimeActivity" }
+
+func (v TimeActivity) entityId() string { return v.Id }
+
+func (v TimeActivity) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindTimeActivities gets the full list of TimeActivities in the QuickBooks account.
 func (c *Client) FindTimeActivities() ([]TimeActivity, error) {
-	var resp struct {
-		QueryResponse struct {
-			TimeActivity  []TimeActivity `json:"TimeActivity"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM TimeActivity", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no time activities could be found", ErrNotFound)
-	}
-
-	timeActivities := make([]TimeActivity, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM TimeActivity ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.TimeActivity == nil {
-			return nil, fmt.Errorf("%w: no time activities could be found", ErrNotFound)
-		}
-
-		timeActivities = append(timeActivities, resp.QueryResponse.TimeActivity...)
-	}
-
-	return timeActivities, nil
+	return findAll[TimeActivity](c)
 }
 
 // FindTimeActivityById returns a time activity with a given Id.

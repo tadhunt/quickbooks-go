@@ -5,7 +5,6 @@ package quickbooks
 
 import (
 	"fmt"
-	"strconv"
 )
 
 // PaymentMethod represents a QuickBooks PaymentMethod entity (the display-name
@@ -38,43 +37,16 @@ func (c *Client) CreatePaymentMethod(pm *PaymentMethod) (*PaymentMethod, error) 
 	return &resp.PaymentMethod, nil
 }
 
-// FindPaymentMethods gets the full list of PaymentMethods in the QuickBooks
-// realm. Paginated in case a realm has many entries (most have < 20).
+// EntityName returns the QuickBooks entity name for PaymentMethod.
+func (PaymentMethod) EntityName() string { return "PaymentMethod" }
+
+func (v PaymentMethod) entityId() string { return v.Id }
+
+func (v PaymentMethod) entityCreateTime() Date { return v.MetaData.CreateTime }
+
+// FindPaymentMethods gets the full list of PaymentMethods in the QuickBooks account.
 func (c *Client) FindPaymentMethods() ([]PaymentMethod, error) {
-	var resp struct {
-		QueryResponse struct {
-			PaymentMethods []PaymentMethod `json:"PaymentMethod"`
-			MaxResults     int
-			StartPosition  int
-			TotalCount     int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM PaymentMethod", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no payment methods could be found", ErrNotFound)
-	}
-
-	paymentMethods := make([]PaymentMethod, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM PaymentMethod ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.PaymentMethods == nil {
-			return nil, fmt.Errorf("%w: no payment methods could be found", ErrNotFound)
-		}
-
-		paymentMethods = append(paymentMethods, resp.QueryResponse.PaymentMethods...)
-	}
-
-	return paymentMethods, nil
+	return findAll[PaymentMethod](c)
 }
 
 // FindPaymentMethodById returns a PaymentMethod with a given Id.

@@ -3,7 +3,6 @@ package quickbooks
 import (
 	"fmt"
 	"encoding/json"
-	"strconv"
 )
 
 // Vendor describes a vendor.
@@ -59,42 +58,16 @@ func (c *Client) CreateVendor(vendor *Vendor) (*Vendor, error) {
 	return &resp.Vendor, nil
 }
 
+// EntityName returns the QuickBooks entity name for Vendor.
+func (Vendor) EntityName() string { return "Vendor" }
+
+func (v Vendor) entityId() string { return v.Id }
+
+func (v Vendor) entityCreateTime() Date { return v.MetaData.CreateTime }
+
 // FindVendors gets the full list of Vendors in the QuickBooks account.
 func (c *Client) FindVendors() ([]Vendor, error) {
-	var resp struct {
-		QueryResponse struct {
-			Vendors       []Vendor `json:"Vendor"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Vendor", &resp); err != nil {
-		return nil, err
-	}
-
-	if resp.QueryResponse.TotalCount == 0 {
-		return nil, fmt.Errorf("%w: no vendors could be found", ErrNotFound)
-	}
-
-	vendors := make([]Vendor, 0, resp.QueryResponse.TotalCount)
-
-	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
-		query := "SELECT * FROM Vendor ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
-
-		if err := c.query(query, &resp); err != nil {
-			return nil, err
-		}
-
-		if resp.QueryResponse.Vendors == nil {
-			return nil, fmt.Errorf("%w: no vendors could be found", ErrNotFound)
-		}
-
-		vendors = append(vendors, resp.QueryResponse.Vendors...)
-	}
-
-	return vendors, nil
+	return findAll[Vendor](c)
 }
 
 // FindVendorById finds the vendor by the given id

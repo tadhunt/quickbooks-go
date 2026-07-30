@@ -1,7 +1,9 @@
 package quickbooks
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -41,6 +43,104 @@ import (
 // is wildly unlikely for our use case, so this is an acceptable tradeoff
 // for the other correctness guarantees. If you use this for high volume
 // datasets, or you need to shrink pagesize for some reason, YMMV.
+
+// pagedEntity is implemented by every entity findAll can walk.
+//
+// The accessors exist because a type parameter cannot reach a struct field:
+// findAll needs each row's Id and CreateTime, and a constraint can only require
+// methods. EntityName is exported because it is independently useful -- it is
+// the token QuickBooks uses for both the table name and the response key. The
+// other two are not exported: Id and MetaData.CreateTime are already public
+// fields, so exported accessors would only duplicate them, and leaving these
+// unexported keeps the interface unimplementable outside this package.
+type pagedEntity interface {
+	EntityName() string
+	entityId() string
+	entityCreateTime() Date
+}
+
+// queryEnvelope decodes a paged SELECT response without naming the entity's
+// array key statically. The key is the entity name, which differs per entity,
+// so it is looked up rather than declared.
+type queryEnvelope struct {
+	QueryResponse map[string]json.RawMessage `json:"QueryResponse"`
+}
+
+// findAll walks every row of an entity using a keyset cursor over
+// MetaData.CreateTime. See the file comment above for why paging works this way,
+// and verifyScanComplete for what guards it.
+func findAll[T pagedEntity](c *Client) ([]T, error) {
+	// The entity name is a property of the type, not of any row, so it is
+	// read off the zero value -- there is no instance to ask until after the
+	// first query, which needs the name in order to run.
+	var zero T
+	entity := zero.EntityName()
+
+	reported, err := c.countEntity(entity)
+	if err != nil {
+		return nil, err
+	}
+
+	if reported == 0 {
+		return nil, fmt.Errorf("%w: no %s rows could be found", ErrNotFound, entity)
+	}
+
+	var collected []T
+
+	cursor := newCreateTimeCursor()
+
+	for {
+		pageSize := c.pageSize()
+		query := "SELECT * FROM " + entity + cursor.where() +
+			" ORDERBY MetaData.CreateTime ASC MAXRESULTS " + strconv.Itoa(pageSize)
+
+		var env queryEnvelope
+
+		if err := c.query(query, &env); err != nil {
+			return nil, err
+		}
+
+		var rows []T
+		if raw, ok := env.QueryResponse[entity]; ok {
+			if err := json.Unmarshal(raw, &rows); err != nil {
+				return nil, fmt.Errorf("decode %s page: %w", entity, err)
+			}
+		}
+
+		added := 0
+		for i := range rows {
+			if cursor.collect(rows[i].entityId()) {
+				collected = append(collected, rows[i])
+				added++
+			}
+		}
+
+		// A short page is the last page: QuickBooks had nothing further to
+		// return. Checked before the stall test so a short final page that
+		// is entirely tie-group overlap ends the scan rather than erroring.
+		//
+		// This is an assumption, not a guarantee -- see verifyScanComplete,
+		// which is what catches a short page that turns out not to have been
+		// the last one. Do not drop that check.
+		if len(rows) < pageSize {
+			break
+		}
+
+		if added == 0 {
+			return nil, cursor.stalled(entity, pageSize)
+		}
+
+		if err := cursor.advance(rows[len(rows)-1].entityCreateTime()); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := verifyScanComplete(entity, len(collected), reported); err != nil {
+		return nil, err
+	}
+
+	return collected, nil
+}
 
 type createTimeCursor struct {
 	value string

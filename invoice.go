@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"encoding/json"
 	"errors"
-	"strconv"
 )
 
 // Invoice represents a QuickBooks Invoice object.
@@ -156,82 +155,16 @@ func (c *Client) DeleteInvoice(invoice *Invoice) error {
 	return c.post("invoice", invoice, nil, map[string]string{"operation": "delete"})
 }
 
-// invoiceQueryResponse is the envelope QuickBooks returns for a paged SELECT of
-// Invoice rows.
-//
-// It has no TotalCount field on purpose: totalCount is not defined to be
-// returned on a paginated query, though it does sometimes leak out for
-// undefined reasons. Leaving the field off means a leaked value cannot be
-// mistaken for the row count of the whole result set.
-type invoiceQueryResponse struct {
-	QueryResponse struct {
-		Invoices      []Invoice `json:"Invoice"`
-		MaxResults    int
-		StartPosition int
-	}
-}
+// EntityName returns the QuickBooks entity name for Invoice.
+func (Invoice) EntityName() string { return "Invoice" }
+
+func (v Invoice) entityId() string { return v.Id }
+
+func (v Invoice) entityCreateTime() Date { return v.MetaData.CreateTime }
 
 // FindInvoices gets the full list of Invoices in the QuickBooks account.
 func (c *Client) FindInvoices() ([]Invoice, error) {
-	reported, err := c.countEntity("Invoice")
-	if err != nil {
-		return nil, err
-	}
-
-	if reported == 0 {
-		return nil, fmt.Errorf("%w: no invoices could be found", ErrNotFound)
-	}
-
-	var invoices []Invoice
-
-	cursor := newCreateTimeCursor()
-
-	for {
-		pageSize := c.pageSize()
-		query := "SELECT * FROM Invoice" + cursor.where() +
-			" ORDERBY MetaData.CreateTime ASC MAXRESULTS " + strconv.Itoa(pageSize)
-
-		var page invoiceQueryResponse
-
-		if err := c.query(query, &page); err != nil {
-			return nil, err
-		}
-
-		rows := page.QueryResponse.Invoices
-
-		added := 0
-		for i := range rows {
-			if cursor.collect(rows[i].Id) {
-				invoices = append(invoices, rows[i])
-				added++
-			}
-		}
-
-		// A short page is the last page: QuickBooks had nothing further to
-		// return. Checked before the stall test so a short final page that
-		// is entirely tie-group overlap ends the scan rather than erroring.
-		//
-		// This is an assumption, not a guarantee -- see verifyScanComplete,
-		// which is what catches a short page that turns out not to have been
-		// the last one. Do not drop that check.
-		if len(rows) < pageSize {
-			break
-		}
-
-		if added == 0 {
-			return nil, cursor.stalled("Invoice", pageSize)
-		}
-
-		if err := cursor.advance(rows[len(rows)-1].MetaData.CreateTime); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := verifyScanComplete("Invoice", len(invoices), reported); err != nil {
-		return nil, err
-	}
-
-	return invoices, nil
+	return findAll[Invoice](c)
 }
 
 // FindInvoiceById finds the invoice by the given id
