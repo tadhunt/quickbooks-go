@@ -16,6 +16,13 @@ var (
 	// ErrNotFound is returned when a query returns no results.
 	ErrNotFound = errors.New("not found")
 
+	// ErrIncompleteScan is returned when a paginated scan collected fewer
+	// rows than QuickBooks reported for the entity, meaning the scan ended
+	// early. The rows that were collected are discarded: a caller that
+	// diffed a partial result against its own records would read the
+	// missing rows as deletions.
+	ErrIncompleteScan = errors.New("incomplete scan")
+
 	// ErrMissingID is returned when a required ID or sync token is not provided.
 	ErrMissingID = errors.New("missing id")
 

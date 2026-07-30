@@ -12,8 +12,55 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"regexp"
 	"time"
 )
+
+// tokenFieldRE matches the token fields of an OAuth token response body.
+// RetrieveBearerToken dumps its own response, and that body carries the access
+// and refresh tokens verbatim.
+var tokenFieldRE = regexp.MustCompile(`"(access_token|refresh_token|id_token)"(\s*:\s*)"[^"]*"`)
+
+// sanitizeDump strips credentials out of an httputil dump so a debug log can be
+// shared or attached to a bug report. Three things leak otherwise:
+//
+//   - Authorization: Bearer <access token>, on every API request
+//   - Authorization: Basic <client id:secret>, on the token exchange
+//   - access_token / refresh_token / id_token, in a token exchange response
+//
+// The auth scheme is kept -- it is useful when diagnosing and is not secret.
+func sanitizeDump(data []byte) []byte {
+	lines := bytes.Split(data, []byte("\n"))
+
+	for i, line := range lines {
+		// Header lines in an httputil dump end with CR; preserve it so
+		// the redacted dump stays a well-formed HTTP message.
+		trimmed := line
+		cr := false
+		if len(trimmed) > 0 && trimmed[len(trimmed)-1] == '\r' {
+			trimmed = trimmed[:len(trimmed)-1]
+			cr = true
+		}
+
+		if !bytes.HasPrefix(bytes.ToLower(trimmed), []byte("authorization:")) {
+			continue
+		}
+
+		scheme := bytes.TrimSpace(trimmed[len("authorization:"):])
+		if idx := bytes.IndexByte(scheme, ' '); idx >= 0 {
+			scheme = scheme[:idx]
+		}
+
+		redacted := "Authorization: " + string(scheme) + " [REDACTED]"
+		if cr {
+			redacted += "\r"
+		}
+
+		lines[i] = []byte(redacted)
+	}
+
+	return tokenFieldRE.ReplaceAll(bytes.Join(lines, []byte("\n")), []byte(`"$1"$2"[REDACTED]"`))
+}
 
 // Client is your handle to the QuickBooks API.
 type Client struct {
@@ -40,6 +87,34 @@ type Client struct {
 	// company. Fetched from CompanyInfo.DefaultTimeZone during
 	// NewClient and used to anchor bare-date fields like TxnDate.
 	companyTZ *time.Location
+
+	// queryPageSize overrides the pagination window used by the bulk
+	// Find* helpers. Zero means "use the queryPageSize default". See
+	// SetQueryPageSize.
+	queryPageSize int
+}
+
+// SetQueryPageSize overrides the pagination window used by the bulk Find*
+// helpers. Pass 0 to restore the default.
+//
+// The default is the largest page QuickBooks will serve, so in normal use a
+// company has to hold more rows than that before a Find* call paginates at
+// all. Lowering it forces the multi-page path against a small company, which
+// is the only practical way to exercise pagination without fabricating
+// thousands of records. Not safe to change while requests are in flight.
+func (c *Client) SetQueryPageSize(n int) {
+	if n < 0 {
+		n = 0
+	}
+	c.queryPageSize = n
+}
+
+// pageSize is the effective pagination window for bulk Find* queries.
+func (c *Client) pageSize() int {
+	if c.queryPageSize > 0 {
+		return c.queryPageSize
+	}
+	return queryPageSize
 }
 
 // CompanyTimezone returns the QuickBooks company's configured timezone,
@@ -247,7 +322,7 @@ func (c *Client) dumpRequest(req *http.Request) {
 		return
 	}
 
-	data = append(data, '\n')
+	data = append(sanitizeDump(data), '\n')
 
 	_, err = f.Write(data)
 	if err != nil {
@@ -279,7 +354,7 @@ func (c *Client) dumpResponse(resp *http.Response) {
 		return
 	}
 
-	data = append(data, '\n')
+	data = append(sanitizeDump(data), '\n')
 
 	_, err = f.Write(data)
 	if err != nil {

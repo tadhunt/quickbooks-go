@@ -73,8 +73,8 @@ func (c *Client) FindCreditMemos() ([]CreditMemo, error) {
 
 	creditMemos := make([]CreditMemo, 0, resp.QueryResponse.TotalCount)
 
-	for i := 0; i < resp.QueryResponse.TotalCount; i += queryPageSize {
-		query := "SELECT * FROM CreditMemo ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(queryPageSize)
+	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
+		query := "SELECT * FROM CreditMemo ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
 
 		if err := c.query(query, &resp); err != nil {
 			return nil, err

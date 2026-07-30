@@ -39,14 +39,24 @@ type Date struct {
 	json.RawMessage
 }
 
+// String returns the Date's wire value with the surrounding JSON quotes
+// removed, or "" for an empty or null Date. This is the exact text QuickBooks
+// sent, which is what a query literal needs.
+func (d Date) String() string {
+	if len(d.RawMessage) == 0 || bytes.Equal(d.RawMessage, []byte("null")) {
+		return ""
+	}
+	return string(bytes.Trim(d.RawMessage, `"`))
+}
+
 // In returns the Date interpreted in loc. RFC3339 strings carry their
 // own offset and ignore loc; bare YYYY-MM-DD strings are anchored at
 // midnight in loc. An empty or null Date returns the zero time.
 func (d Date) In(loc *time.Location) (time.Time, error) {
-	if len(d.RawMessage) == 0 || bytes.Equal(d.RawMessage, []byte("null")) {
+	s := d.String()
+	if s == "" {
 		return time.Time{}, nil
 	}
-	s := string(bytes.Trim(d.RawMessage, `"`))
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
 		return t, nil
 	}

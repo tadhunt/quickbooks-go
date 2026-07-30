@@ -94,39 +94,79 @@ func (c *Client) CreateCustomer(customer *Customer) (*Customer, error) {
 	return &resp.Customer, nil
 }
 
+// customerQueryResponse is the envelope QuickBooks returns for a paged SELECT
+// of Customer rows.
+//
+// It has no TotalCount field on purpose: totalCount is not defined to be
+// returned on a paginated query, though it does sometimes leak out for
+// undefined reasons. Leaving the field off means a leaked value cannot be
+// mistaken for the row count of the whole result set.
+type customerQueryResponse struct {
+	QueryResponse struct {
+		Customers     []Customer `json:"Customer"`
+		MaxResults    int
+		StartPosition int
+	}
+}
+
 // FindCustomers gets the full list of Customers in the QuickBooks account.
 func (c *Client) FindCustomers() ([]Customer, error) {
-	var resp struct {
-		QueryResponse struct {
-			Customers     []Customer `json:"Customer"`
-			MaxResults    int
-			StartPosition int
-			TotalCount    int
-		}
-	}
-
-	if err := c.query("SELECT COUNT(*) FROM Customer", &resp); err != nil {
+	reported, err := c.countEntity("Customer")
+	if err != nil {
 		return nil, err
 	}
 
-	if resp.QueryResponse.TotalCount == 0 {
+	if reported == 0 {
 		return nil, fmt.Errorf("%w: no customers could be found", ErrNotFound)
 	}
 
-	customers := make([]Customer, 0, resp.QueryResponse.TotalCount)
+	var customers []Customer
 
-	for i := 0; i < resp.QueryResponse.TotalCount; i += queryPageSize {
-		query := "SELECT * FROM Customer ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(queryPageSize)
+	cursor := newCreateTimeCursor()
 
-		if err := c.query(query, &resp); err != nil {
+	for {
+		pageSize := c.pageSize()
+		query := "SELECT * FROM Customer" + cursor.where() +
+			" ORDERBY MetaData.CreateTime ASC MAXRESULTS " + strconv.Itoa(pageSize)
+
+		var page customerQueryResponse
+
+		if err := c.query(query, &page); err != nil {
 			return nil, err
 		}
 
-		if resp.QueryResponse.Customers == nil {
-			return nil, fmt.Errorf("%w: no customers could be found", ErrNotFound)
+		rows := page.QueryResponse.Customers
+
+		added := 0
+		for i := range rows {
+			if cursor.collect(rows[i].Id) {
+				customers = append(customers, rows[i])
+				added++
+			}
 		}
 
-		customers = append(customers, resp.QueryResponse.Customers...)
+		// A short page is the last page: QuickBooks had nothing further to
+		// return. Checked before the stall test so a short final page that
+		// is entirely tie-group overlap ends the scan rather than erroring.
+		//
+		// This is an assumption, not a guarantee -- see verifyScanComplete,
+		// which is what catches a short page that turns out not to have been
+		// the last one. Do not drop that check.
+		if len(rows) < pageSize {
+			break
+		}
+
+		if added == 0 {
+			return nil, cursor.stalled("Customer", pageSize)
+		}
+
+		if err := cursor.advance(rows[len(rows)-1].MetaData.CreateTime); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := verifyScanComplete("Customer", len(customers), reported); err != nil {
+		return nil, err
 	}
 
 	return customers, nil

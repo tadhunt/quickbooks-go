@@ -179,8 +179,8 @@ func (c *Client) FindAttachables() ([]Attachable, error) {
 
 	attachables := make([]Attachable, 0, resp.QueryResponse.TotalCount)
 
-	for i := 0; i < resp.QueryResponse.TotalCount; i += queryPageSize {
-		query := "SELECT * FROM Attachable ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(queryPageSize)
+	for i := 0; i < resp.QueryResponse.TotalCount; i += c.pageSize() {
+		query := "SELECT * FROM Attachable ORDERBY Id STARTPOSITION " + strconv.Itoa(i+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
 
 		if err := c.query(query, &resp); err != nil {
 			return nil, err
@@ -223,7 +223,7 @@ func (c *Client) QueryAttachables(query string) ([]Attachable, error) {
 	}
 
 	// First page
-	pagedQuery := query + " STARTPOSITION 1 MAXRESULTS " + strconv.Itoa(queryPageSize)
+	pagedQuery := query + " STARTPOSITION 1 MAXRESULTS " + strconv.Itoa(c.pageSize())
 	if err := c.query(pagedQuery, &resp); err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (c *Client) QueryAttachables(query string) ([]Attachable, error) {
 
 	// Fetch remaining pages if there are more
 	for len(attachables) < resp.QueryResponse.TotalCount {
-		pagedQuery = query + " STARTPOSITION " + strconv.Itoa(len(attachables)+1) + " MAXRESULTS " + strconv.Itoa(queryPageSize)
+		pagedQuery = query + " STARTPOSITION " + strconv.Itoa(len(attachables)+1) + " MAXRESULTS " + strconv.Itoa(c.pageSize())
 
 		if err := c.query(pagedQuery, &resp); err != nil {
 			return nil, err
